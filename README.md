@@ -1683,6 +1683,14 @@ export MH_PRIVATE=1
 
 Commands are not recorded while private mode is active. The file-based private mode state is stored next to the config file.
 
+When policy rules deny a command in production or other environments, recording is skipped silently by default. To surface policy denials in the shell hook stderr stream:
+
+```bash
+export MH_POLICY_VERBOSE=1
+```
+
+This works together with `MH_RECORD_VERBOSE`, which shows all record diagnostics.
+
 ## Encrypted Vault
 
 The vault stores commands encrypted with AES-256-GCM. Vault entries are stored in the `vault` table as encrypted bytes and a nonce. The plaintext command is not listed by `mh vault list`.
@@ -2000,6 +2008,8 @@ Runtime:
 - `MH_CONFIG`: override config file path.
 - `MH_DB`: override database file path.
 - `MH_PRIVATE`: default private mode environment variable.
+- `MH_POLICY_VERBOSE`: print policy denial messages from shell hooks to stderr.
+- `MH_RECORD_VERBOSE`: print record diagnostics from shell hooks to stderr.
 - `MH_SESSION_ID`: shell session identifier used by hooks.
 - `MH_PICK_LIMIT`: default result limit for up-arrow picker integration.
 - `MH_VAULT_PASSPHRASE`: non-interactive vault passphrase source.

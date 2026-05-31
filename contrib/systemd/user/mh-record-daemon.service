@@ -1,0 +1,14 @@
+[Unit]
+Description=mh record daemon (shell history)
+Documentation=https://github.com/cumakurt/mh
+After=default.target
+
+[Service]
+Type=simple
+# Replace with the output of `command -v mh`, or run: mh daemon install
+ExecStart=/usr/local/bin/mh daemon run
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

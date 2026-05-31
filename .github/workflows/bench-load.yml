@@ -1,0 +1,39 @@
+name: Load benchmark
+
+on:
+  schedule:
+    - cron: "0 3 * * 0"
+  workflow_dispatch:
+    inputs:
+      size:
+        description: Number of history rows to insert
+        required: false
+        default: "1000000"
+
+jobs:
+  search-load-bench:
+    name: Search load benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Run search load benchmark
+        run: |
+          output="$(MH_BENCH_SEARCH_SIZE=${{ inputs.size }} cargo bench --bench search_bench 2>&1 | tee /dev/stderr)"
+          fts_ms="$(echo "$output" | sed -n 's/.*FTS search avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          last_ms="$(echo "$output" | sed -n 's/.*last-50 avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          fuzzy_ms="$(echo "$output" | sed -n 's/.*fuzzy search avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          test -n "$fts_ms" || { echo "missing FTS ms/op"; exit 1; }
+          test -n "$last_ms" || { echo "missing last-50 ms/op"; exit 1; }
+          test -n "$fuzzy_ms" || { echo "missing fuzzy ms/op"; exit 1; }
+          awk -v fts="$fts_ms" 'BEGIN { if (fts > 50.0) { printf "FTS search %.2f ms/op exceeds 50 ms threshold\n", fts; exit 1 } }'
+          awk -v last="$last_ms" 'BEGIN { if (last > 50.0) { printf "last-50 search %.2f ms/op exceeds 50 ms threshold\n", last; exit 1 } }'
+          awk -v fuzzy="$fuzzy_ms" 'BEGIN { if (fuzzy > 100.0) { printf "fuzzy search %.2f ms/op exceeds 100 ms threshold\n", fuzzy; exit 1 } }'
+          echo "load bench size=${{ inputs.size }} fts=${fts_ms}ms last-50=${last_ms}ms fuzzy=${fuzzy_ms}ms"

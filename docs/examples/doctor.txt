@@ -1,0 +1,16 @@
+$ mh doctor
+[OK   ] Config loaded from /tmp/tmp.Tn7ZkhZWWh/config/mh/config.toml
+[OK   ] Database opened at /tmp/tmp.Tn7ZkhZWWh/data/mh/history.db
+[INFO ] Database size: 0.14 MB / 512 MB
+[OK   ] Write permission available
+[OK   ] Config permissions are restricted
+[OK   ] Database permissions are restricted
+[OK   ] Database integrity check passed
+[OK   ] Database schema is current (version 8)
+[OK   ] Private mode is disabled
+[INFO ] Command count: 6
+Sync                : disabled (no server configured)
+Vault config        : disabled (keyring: enabled)
+[INFO ] Current shell: /usr/bin/zsh
+[OK   ] Shell integration is active (/root/.zshrc)
+[OK   ] Binary is in PATH: /usr/local/bin/mh

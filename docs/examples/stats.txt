@@ -1,0 +1,30 @@
+$ mh stats --top 5
+Period              : all time
+Total commands      : 6
+Successful commands : 5
+Failed commands     : 1
+Error rate          : 16.7%
+Average duration    : 1102.8 ms
+Longest duration    : 5400 ms
+Peak hour           : 18:00
+
+Top commands
+       1  curl https://example.com
+       1  docker ps -a
+       1  git status
+       1  kubectl get pods
+       1  pytest tests/unit
+
+Top directories
+       6  /tmp/demo
+
+Error-prone commands
+       1  pytest tests/unit
+
+Shells
+       6  zsh
+
+Categories
+       1  docker
+       1  git
+       1  network

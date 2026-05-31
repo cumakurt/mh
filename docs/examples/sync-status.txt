@@ -1,0 +1,9 @@
+$ mh sync status
+Sync: disabled
+Server URL: -
+Token configured: no
+Auto sync interval: 60 minute(s)
+Device ID: 79c1db86-4c1a-48f5-ae55-fb987bc426e1
+Last synced at: -
+Remote sync client: disabled (rebuild with --features sync)
+Config path: /tmp/tmp.Tn7ZkhZWWh/config/mh/config.toml

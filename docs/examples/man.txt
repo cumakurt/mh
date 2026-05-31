@@ -1,0 +1,140 @@
+$ mh man | head -n 12
+.ie \n(.g .ds Aq \(aq
+.el .ds Aq '
+.TH mh 1  "mh 0.1.0" 
+.SH NAME
+mh \- A modern command history manager
+.SH SYNOPSIS
+\fBmh\fR [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] <\fIsubcommands\fR>
+.SH DESCRIPTION
+A modern command history manager
+.SH OPTIONS
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Print help
+.TP
+\fB\-V\fR, \fB\-\-version\fR
+Print version
+.SH SUBCOMMANDS
+.TP
+mh\-init(1)
+Generate shell integration code
+.TP
+mh\-record(1)
+Record one executed command
+.TP
+mh\-search(1)
+Search command history
+.TP
+mh\-last(1)
+Show recent commands
+.TP
+mh\-stats(1)
+Show usage statistics
+.TP
+mh\-delete(1)
+Delete command history records
+.TP
+mh\-clear(1)
+Clear command history
+.TP
+mh\-export(1)
+Export command history
+.TP
+mh\-import(1)
+Import command history
+.TP
+mh\-doctor(1)
+Check local configuration and database health
+.TP
+mh\-config(1)
+Inspect configuration
+.TP
+mh\-tag(1)
+Add tags to commands
+.TP
+mh\-untag(1)
+Remove tags from a command
+.TP
+mh\-tags(1)
+List known tags
+.TP
+mh\-pin(1)
+Pin commands
+.TP
+mh\-unpin(1)
+Unpin commands
+.TP
+mh\-pinned(1)
+Show pinned commands
+.TP
+mh\-pick(1)
+Pick a command interactively and print it
+.TP
+mh\-tui(1)
+Launch the interactive terminal interface
+.TP
+mh\-snippet(1)
+Manage reusable command snippets
+.TP
+mh\-replay(1)
+Re\-execute a command from history
+.TP
+mh\-risk(1)
+Assess and scan risky commands in history
+.TP
+mh\-context(1)
+Show git repository context for commands
+.TP
+mh\-diff(1)
+Compare history groups
+.TP
+mh\-audit(1)
+Show security audit log entries
+.TP
+mh\-private(1)
+Manage private mode
+.TP
+mh\-vault(1)
+Manage encrypted command vault
+.TP
+mh\-sync(1)
+Manage optional remote sync
+.TP
+mh\-completions(1)
+Generate shell completion scripts
+.TP
+mh\-man(1)
+Generate the mh man page
+.TP
+mh\-about(1)
+Show application and developer information
+.TP
+mh\-policy(1)
+Evaluate and inspect policy rules
+.TP
+mh\-timeline(1)
+Session timeline and incident forensics
+.TP
+mh\-hold(1)
+Manage legal holds and retention
+.TP
+mh\-watch(1)
+Stream audit events for SIEM integration
+.TP
+mh\-runbook(1)
+Manage reusable runbooks from sessions
+.TP
+mh\-break\-glass(1)
+Emergency recording override with mandatory reason
+.TP
+mh\-help(1)
+Print this message or the help of the given subcommand(s)
+.SH EXTRA
+Author: Cuma Kurt <cumakurt@gmail.com>
+GitHub: https://github.com/cumakurt/mh
+LinkedIn: https://www.linkedin.com/in/cuma\-kurt\-34414917/
+.SH VERSION
+v0.1.0
+.SH AUTHORS
+Cuma Kurt <cumakurt@gmail.com>

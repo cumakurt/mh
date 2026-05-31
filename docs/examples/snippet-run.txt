@@ -1,0 +1,2 @@
+$ mh snippet run demo-ls --var path=/tmp --dry-run
+ls -la /tmp

@@ -1,0 +1,2 @@
+$ mh pick --query docker --limit 5
+docker ps -a

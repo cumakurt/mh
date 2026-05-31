@@ -1,0 +1,50 @@
+/target/
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Local config and runtime data
+.mh-write-test
+*.mh.bak.*
+
+# IDE and editor artifacts
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Cursor / Electron runtime data (must never live in the repo)
+User/
+logs/
+Cache/
+CachedData/
+CachedProfilesData/
+Code Cache/
+Local Storage/
+Shared Dictionary/
+blob_storage/
+Backups/
+Crashpad/
+Dictionaries/
+GPUCache/
+DawnGraphiteCache/
+DawnWebGPUCache/
+sentry/
+process-monitor/
+Cookies
+Cookies-journal
+DIPS
+DIPS-wal
+SharedStorage
+SharedStorage-wal
+Trust Tokens
+Trust Tokens-journal
+Network Persistent State
+TransportSecurity
+Preferences
+languagepacks.json
+machineid
+code.lock
+*.sock

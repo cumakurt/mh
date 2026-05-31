@@ -1,0 +1,13 @@
+$ mh diff --session demo-session-001 --session other-session
+session demo-session-001: 6 unique command(s)
+session other-session: 0 unique command(s)
+
+Only in session demo-session-001:
+- curl https://example.com
+- docker ps -a
+- git status
+- kubectl get pods
+- pytest tests/unit
+- rm -rf /tmp/sandbox
+
+Only in session other-session:

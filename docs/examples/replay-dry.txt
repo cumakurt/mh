@@ -1,0 +1,2 @@
+$ mh replay 6 --dry-run
+kubectl get pods

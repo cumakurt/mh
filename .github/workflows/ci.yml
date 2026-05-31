@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    name: Rust checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Check
+        run: cargo check --all-targets
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+      - name: Test sync feature
+        run: cargo test --features sync
+
+      - name: Record benchmark threshold
+        run: |
+          output="$(cargo bench --bench record_bench 2>&1 | tee /dev/stderr)"
+          ms="$(echo "$output" | sed -n 's/.*(\([0-9.]*\) ms\/op).*/\1/p' | tail -1)"
+          test -n "$ms" || { echo "benchmark output missing ms/op"; exit 1; }
+          awk -v ms="$ms" 'BEGIN { if (ms > 20.0) { printf "record bench %.2f ms/op exceeds 20 ms threshold\n", ms; exit 1 } }'
+          echo "record bench ${ms} ms/op (threshold 20 ms)"
+
+      - name: Record pipeline benchmark threshold
+        run: |
+          output="$(cargo bench --bench record_pipeline_bench 2>&1 | tee /dev/stderr)"
+          ms="$(echo "$output" | sed -n 's/.*(\([0-9.]*\) ms\/op).*/\1/p' | tail -1)"
+          test -n "$ms" || { echo "pipeline benchmark output missing ms/op"; exit 1; }
+          awk -v ms="$ms" 'BEGIN { if (ms > 20.0) { printf "record pipeline bench %.2f ms/op exceeds 20 ms threshold\n", ms; exit 1 } }'
+          echo "record pipeline bench ${ms} ms/op (threshold 20 ms)"
+
+      - name: Search benchmark threshold
+        run: |
+          output="$(MH_BENCH_ASSERT=1 cargo bench --bench search_bench 2>&1 | tee /dev/stderr)"
+          fts_ms="$(echo "$output" | sed -n 's/.*FTS search avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          last_ms="$(echo "$output" | sed -n 's/.*last-50 avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          fuzzy_ms="$(echo "$output" | sed -n 's/.*fuzzy search avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          test -n "$fts_ms" || { echo "search benchmark missing FTS ms/op"; exit 1; }
+          test -n "$last_ms" || { echo "search benchmark missing last-50 ms/op"; exit 1; }
+          test -n "$fuzzy_ms" || { echo "search benchmark missing fuzzy ms/op"; exit 1; }
+          echo "search bench fts=${fts_ms}ms last-50=${last_ms}ms fuzzy=${fuzzy_ms}ms"
+
+      - name: Security audit
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Build release binary with sync
+        run: cargo build --release --features sync

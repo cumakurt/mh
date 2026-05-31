@@ -1,0 +1,4 @@
+$ mh risk check "rm -rf /"
+Level               : critical
+Rule                : rm_recursive_root
+Description         : Recursive delete targeting root or system paths

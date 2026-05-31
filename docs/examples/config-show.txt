@@ -1,0 +1,135 @@
+$ mh config show
+[history]
+max_entries = 100000
+ignore_duplicates = true
+ignore_space_prefix = true
+save_failed_commands = true
+save_successful_commands = true
+auto_categorize = true
+dedupe_window_seconds = 5
+
+[security]
+mask_secrets = true
+skip_secret_commands = false
+private_mode_env = "MH_PRIVATE"
+audit_log = true
+
+[database]
+path = "/tmp/tmp.Tn7ZkhZWWh/data/mh/history.db"
+auto_vacuum = true
+max_size_mb = 512
+
+[display]
+default_limit = 50
+color = true
+date_format = "%Y-%m-%d %H:%M:%S"
+show_duration = true
+show_exit_code = true
+
+[ignore]
+commands = [
+    "history",
+    "clear",
+    "exit",
+    "logout",
+    "mh record",
+]
+patterns = [
+    ".*password.*",
+    ".*token.*",
+    ".*secret.*",
+    ".*api[_-]?key.*",
+    ".*bearer.*",
+]
+
+[categories]
+docker = [
+    "docker ",
+    "docker-compose ",
+    "podman ",
+]
+git = [
+    "git ",
+    "gh ",
+]
+network = [
+    "curl ",
+    "wget ",
+    "ssh ",
+    "nc ",
+    "nmap ",
+    "ping ",
+]
+package = [
+    "apt ",
+    "apt-get ",
+    "dpkg ",
+    "snap ",
+    "cargo ",
+    "pip ",
+]
+system = [
+    "systemctl ",
+    "journalctl ",
+    "top ",
+    "htop ",
+]
+
+[sync]
+enabled = false
+server_url = ""
+token = ""
+auto_sync_interval_minutes = 60
+last_synced_at = ""
+device_id = "57e4cf8f-cdee-40d3-ba4e-0c3110cfe03a"
+
+[vault]
+enabled = false
+use_keyring = true
+
+[policy]
+default_action = "allow"
+
+[[policy.rules]]
+id = "deny-critical-prod"
+action = "deny"
+risk_level = "critical"
+environment = "production"
+message = "Critical commands are blocked in production"
+
+[[policy.rules]]
+id = "approval-critical"
+action = "require_approval"
+risk_level = "critical"
+message = "Critical commands require explicit approval"
+
+[[policy.rules]]
+id = "warn-high"
+action = "warn"
+risk_level = "high"
+message = "High risk command detected"
+
+[retention]
+enabled = false
+retention_days = 365
+respect_legal_hold = true
+
+[[environment.rules]]
+tier = "production"
+hostname_contains = "prod"
+
+[[environment.rules]]
+tier = "staging"
+hostname_contains = "stage"
+
+[[environment.rules]]
+tier = "development"
+hostname_contains = "dev"
+
+[siem]
+enabled = false
+format = "syslog"
+
+[break_glass]
+default_ttl_hours = 4
+

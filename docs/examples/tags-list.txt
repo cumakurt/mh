@@ -1,0 +1,6 @@
+$ mh tags list
+1	demo
+1	docker
+1	git
+1	tagged
+1	work

@@ -1,0 +1,3267 @@
+$ mh completions zsh | head -n 8
+#compdef mh
+
+autoload -U is-at-least
+
+_mh() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
+":: :_mh_commands" \
+"*::: :->mh" \
+&& ret=0
+    case $state in
+    (mh)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+'--install[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':shell:(bash zsh fish nushell)' \
+&& ret=0
+;;
+(record)
+_arguments "${_arguments_options[@]}" : \
+'--command=[]:COMMAND:_default' \
+'--cwd=[]:CWD:_default' \
+'--shell=[]:SHELL:_default' \
+'--exit-code=[]:EXIT_CODE:_default' \
+'--duration-ms=[]:DURATION_MS:_default' \
+'--started-at=[]:STARTED_AT:_default' \
+'--finished-at=[]:FINISHED_AT:_default' \
+'--session-id=[]:SESSION_ID:_default' \
+'--tty=[]:TTY:_default' \
+'--tags=[]:TAGS:_default' \
+'--env-context=[]:ENV_CONTEXT:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+'-n+[]:LIMIT:_default' \
+'--limit=[]:LIMIT:_default' \
+'--cwd=[]:CWD:_default' \
+'--user=[]:USER:_default' \
+'--shell=[]:SHELL:_default' \
+'--after=[]:AFTER:_default' \
+'--before=[]:BEFORE:_default' \
+'--tag=[]:TAG:_default' \
+'--category=[]:CATEGORY:_default' \
+'--duration-gt=[]:DURATION_GT:_default' \
+'--duration-lt=[]:DURATION_LT:_default' \
+'--hostname=[]:HOSTNAME:_default' \
+'--git-repo=[]:GIT_REPO:_default' \
+'--git-branch=[]:GIT_BRANCH:_default' \
+'--git-commit=[]:GIT_COMMIT:_default' \
+'--env=[]:ENV:_default' \
+'--failed[]' \
+'--success[]' \
+'--regex[]' \
+'--fuzzy[]' \
+'--fts[]' \
+'--pinned[]' \
+'--ssh[]' \
+'--root[]' \
+'--json[]' \
+'--csv[]' \
+'--plain[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::query:_default' \
+&& ret=0
+;;
+(last)
+_arguments "${_arguments_options[@]}" : \
+'--cwd=[]:CWD:_default' \
+'--tag=[]:TAG:_default' \
+'--category=[]:CATEGORY:_default' \
+'--git-repo=[]:GIT_REPO:_default' \
+'--git-branch=[]:GIT_BRANCH:_default' \
+'--git-commit=[]:GIT_COMMIT:_default' \
+'--env=[]:ENV:_default' \
+'--failed[]' \
+'--session[]' \
+'--pinned[]' \
+'--json[]' \
+'--markdown[]' \
+'--plain[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::limit:_default' \
+&& ret=0
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+'--top=[]:TOP:_default' \
+'--today[]' \
+'--week[]' \
+'--month[]' \
+'--category[]' \
+'--heatmap[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'--older-than=[]:OLDER_THAN:_default' \
+'--contains=[]:CONTAINS:_default' \
+'--tag=[]:TAG:_default' \
+'--failed[]' \
+'--yes[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::id:_default' \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+'--user=[]:USER:_default' \
+'--before=[]:BEFORE:_default' \
+'--keep-pinned[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" : \
+'--json=[]:FILE:_default' \
+'--csv=[]:FILE:_default' \
+'--markdown=[]:FILE:_default' \
+'--compressed=[]:FILE:_default' \
+'--sqlite=[]:FILE:_default' \
+'--after=[]:AFTER:_default' \
+'--before=[]:BEFORE:_default' \
+'--tag=[]:TAG:_default' \
+'--category=[]:CATEGORY:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" : \
+'--merge[]' \
+'--dry-run[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':file:_default' \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':key:_default' \
+':value:_default' \
+&& ret=0
+;;
+(reset)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(validate)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__config__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-config-help-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(validate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(tag)
+_arguments "${_arguments_options[@]}" : \
+'--last=[]:COUNT:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+'*::args:_default' \
+&& ret=0
+;;
+(untag)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':command_id:_default' \
+'*::tags:_default' \
+&& ret=0
+;;
+(tags)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__tags_commands" \
+"*::: :->tags" \
+&& ret=0
+
+    case $state in
+    (tags)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-tags-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__tags__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-tags-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(pin)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+'*::ids:_default' \
+&& ret=0
+;;
+(unpin)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+'*::ids:_default' \
+&& ret=0
+;;
+(pinned)
+_arguments "${_arguments_options[@]}" : \
+'--json[]' \
+'--plain[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'::limit:_default' \
+&& ret=0
+;;
+(pick)
+_arguments "${_arguments_options[@]}" : \
+'-n+[]:LIMIT:_default' \
+'--limit=[]:LIMIT:_default' \
+'--query=[]:QUERY:_default' \
+'--cwd=[]:CWD:_default' \
+'--tag=[]:TAG:_default' \
+'--category=[]:CATEGORY:_default' \
+'--failed[]' \
+'--pinned[]' \
+'--fuzzy[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(tui)
+_arguments "${_arguments_options[@]}" : \
+'-n+[]:LIMIT:_default' \
+'--limit=[]:LIMIT:_default' \
+'--query=[]:QUERY:_default' \
+'--tag=[]:TAG:_default' \
+'--category=[]:CATEGORY:_default' \
+'--failed[]' \
+'--pinned[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(snippet)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__snippet_commands" \
+"*::: :->snippet" \
+&& ret=0
+
+    case $state in
+    (snippet)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-snippet-command-$line[1]:"
+        case $line[1] in
+            (save)
+_arguments "${_arguments_options[@]}" : \
+'--desc=[]:DESC:_default' \
+'--tags=[]:TAGS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+':command:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+'*--var=[]:KEY=VALUE:_default' \
+'--dry-run[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':file:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__snippet__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-snippet-help-command-$line[1]:"
+        case $line[1] in
+            (save)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(replay)
+_arguments "${_arguments_options[@]}" : \
+'--reason=[Reason required for policy approval on replay]:REASON:_default' \
+'--dry-run[]' \
+'-y[Skip interactive confirmation before executing the command]' \
+'--yes[Skip interactive confirmation before executing the command]' \
+'--confirm[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':id:_default' \
+&& ret=0
+;;
+(risk)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__risk_commands" \
+"*::: :->risk" \
+&& ret=0
+
+    case $state in
+    (risk)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-risk-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':command:_default' \
+&& ret=0
+;;
+(scan)
+_arguments "${_arguments_options[@]}" : \
+'-n+[]:LIMIT:_default' \
+'--limit=[]:LIMIT:_default' \
+'--critical[]' \
+'--high[]' \
+'--today[]' \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__risk__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-risk-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(scan)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(context)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__context_commands" \
+"*::: :->context" \
+&& ret=0
+
+    case $state in
+    (context)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-context-command-$line[1]:"
+        case $line[1] in
+            (repos)
+_arguments "${_arguments_options[@]}" : \
+'-n+[]:LIMIT:_default' \
+'--limit=[]:LIMIT:_default' \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(branches)
+_arguments "${_arguments_options[@]}" : \
+'--repo=[]:REPO:_default' \
+'-n+[]:LIMIT:_default' \
+'--limit=[]:LIMIT:_default' \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" : \
+'--repo=[]:REPO:_default' \
+'--branch=[]:BRANCH:_default' \
+'--commit=[]:COMMIT:_default' \
+'-n+[]:LIMIT:_default' \
+'--limit=[]:LIMIT:_default' \
+'--json[]' \
+'--plain[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__context__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-context-help-command-$line[1]:"
+        case $line[1] in
+            (repos)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(branches)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+'*--session=[]:SESSIONS:_default' \
+'*--host=[]:HOSTS:_default' \
+'--today[]' \
+'--yesterday[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(audit)
+_arguments "${_arguments_options[@]}" : \
+'--limit=[]:LIMIT:_default' \
+'--format=[]:FORMAT:(table json)' \
+'--verify-chain[Verify tamper-evident audit hash chain integrity]' \
+'--today[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(private)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__private_commands" \
+"*::: :->private" \
+&& ret=0
+
+    case $state in
+    (private)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-private-command-$line[1]:"
+        case $line[1] in
+            (on)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(off)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__private__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-private-help-command-$line[1]:"
+        case $line[1] in
+            (on)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(off)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(vault)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__vault_commands" \
+"*::: :->vault" \
+&& ret=0
+
+    case $state in
+    (vault)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-vault-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'--label=[]:LABEL:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':command:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':id:_default' \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':id:_default' \
+&& ret=0
+;;
+(unlock)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(lock)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__vault__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-vault-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(unlock)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(lock)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__sync_commands" \
+"*::: :->sync" \
+&& ret=0
+
+    case $state in
+    (sync)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-sync-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':url:_default' \
+':token:_default' \
+&& ret=0
+;;
+(push)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(enable)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(disable)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__sync__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-sync-help-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(push)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(enable)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(disable)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+'-o+[]:OUTPUT:_default' \
+'--output=[]:OUTPUT:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':shell:(bash zsh fish power-shell elvish)' \
+&& ret=0
+;;
+(man)
+_arguments "${_arguments_options[@]}" : \
+'-o+[]:OUTPUT:_default' \
+'--output=[]:OUTPUT:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(about)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(policy)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__policy_commands" \
+"*::: :->policy" \
+&& ret=0
+
+    case $state in
+    (policy)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-policy-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+'--hostname=[]:HOSTNAME:_default' \
+'--env=[]:ENV:_default' \
+'--json[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':command:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__policy__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-policy-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(timeline)
+_arguments "${_arguments_options[@]}" : \
+'--session=[]:SESSION:_default' \
+'--json[]' \
+'--plain[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(hold)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__hold_commands" \
+"*::: :->hold" \
+&& ret=0
+
+    case $state in
+    (hold)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-hold-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+'--session=[]:SESSION:_default' \
+'--command=[]:COMMAND:_default' \
+'--tag=[]:TAG:_default' \
+'--git-repo=[]:GIT_REPO:_default' \
+'--reason=[]:REASON:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':label:_default' \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':id:_default' \
+&& ret=0
+;;
+(purge)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__hold__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-hold-help-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(purge)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+'--limit=[]:LIMIT:_default' \
+'--format=[]:FORMAT:(table json)' \
+'--follow[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(runbook)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__runbook_commands" \
+"*::: :->runbook" \
+&& ret=0
+
+    case $state in
+    (runbook)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-runbook-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+'--session=[]:SESSION:_default' \
+'--desc=[]:DESC:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+'--dry-run[]' \
+'-h[Print help]' \
+'--help[Print help]' \
+':name:_default' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__runbook__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-runbook-help-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(break-glass)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+":: :_mh__subcmd__break-glass_commands" \
+"*::: :->break-glass" \
+&& ret=0
+
+    case $state in
+    (break-glass)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-break-glass-command-$line[1]:"
+        case $line[1] in
+            (on)
+_arguments "${_arguments_options[@]}" : \
+'--reason=[]:REASON:_default' \
+'--ttl-hours=[]:TTL_HOURS:_default' \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(off)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__break-glass__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-break-glass-help-command-$line[1]:"
+        case $line[1] in
+            (on)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(off)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help_commands" \
+"*::: :->help" \
+&& ret=0
+
+    case $state in
+    (help)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(record)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(search)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(last)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(stats)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(clear)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(import)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(doctor)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__config_commands" \
+"*::: :->config" \
+&& ret=0
+
+    case $state in
+    (config)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-config-command-$line[1]:"
+        case $line[1] in
+            (show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(path)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(edit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(set)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(reset)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(validate)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(tag)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(untag)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(tags)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__tags_commands" \
+"*::: :->tags" \
+&& ret=0
+
+    case $state in
+    (tags)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-tags-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(pin)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(unpin)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pinned)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pick)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(tui)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(snippet)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__snippet_commands" \
+"*::: :->snippet" \
+&& ret=0
+
+    case $state in
+    (snippet)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-snippet-command-$line[1]:"
+        case $line[1] in
+            (save)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(export)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(replay)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(risk)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__risk_commands" \
+"*::: :->risk" \
+&& ret=0
+
+    case $state in
+    (risk)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-risk-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(scan)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(context)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__context_commands" \
+"*::: :->context" \
+&& ret=0
+
+    case $state in
+    (context)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-context-command-$line[1]:"
+        case $line[1] in
+            (repos)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(branches)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(history)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(diff)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(audit)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(private)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__private_commands" \
+"*::: :->private" \
+&& ret=0
+
+    case $state in
+    (private)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-private-command-$line[1]:"
+        case $line[1] in
+            (on)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(off)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(vault)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__vault_commands" \
+"*::: :->vault" \
+&& ret=0
+
+    case $state in
+    (vault)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-vault-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(delete)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(unlock)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(lock)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(sync)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__sync_commands" \
+"*::: :->sync" \
+&& ret=0
+
+    case $state in
+    (sync)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-sync-command-$line[1]:"
+        case $line[1] in
+            (status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(setup)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(push)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(pull)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(enable)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(disable)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(completions)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(man)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(about)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(policy)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__policy_commands" \
+"*::: :->policy" \
+&& ret=0
+
+    case $state in
+    (policy)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-policy-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(check)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(timeline)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(hold)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__hold_commands" \
+"*::: :->hold" \
+&& ret=0
+
+    case $state in
+    (hold)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-hold-command-$line[1]:"
+        case $line[1] in
+            (add)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(remove)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(purge)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(watch)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(runbook)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__runbook_commands" \
+"*::: :->runbook" \
+&& ret=0
+
+    case $state in
+    (runbook)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-runbook-command-$line[1]:"
+        case $line[1] in
+            (list)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(show)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(create)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(run)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(break-glass)
+_arguments "${_arguments_options[@]}" : \
+":: :_mh__subcmd__help__subcmd__break-glass_commands" \
+"*::: :->break-glass" \
+&& ret=0
+
+    case $state in
+    (break-glass)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:mh-help-break-glass-command-$line[1]:"
+        case $line[1] in
+            (on)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(off)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+(status)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+(help)
+_arguments "${_arguments_options[@]}" : \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_mh_commands] )) ||
+_mh_commands() {
+    local commands; commands=(
+'init:Generate shell integration code' \
+'record:Record one executed command' \
+'search:Search command history' \
+'last:Show recent commands' \
+'stats:Show usage statistics' \
+'delete:Delete command history records' \
+'clear:Clear command history' \
+'export:Export command history' \
+'import:Import command history' \
+'doctor:Check local configuration and database health' \
+'config:Inspect configuration' \
+'tag:Add tags to commands' \
+'untag:Remove tags from a command' \
+'tags:List known tags' \
+'pin:Pin commands' \
+'unpin:Unpin commands' \
+'pinned:Show pinned commands' \
+'pick:Pick a command interactively and print it' \
+'tui:Launch the interactive terminal interface' \
+'snippet:Manage reusable command snippets' \
+'replay:Re-execute a command from history' \
+'risk:Assess and scan risky commands in history' \
+'context:Show git repository context for commands' \
+'diff:Compare history groups' \
+'audit:Show security audit log entries' \
+'private:Manage private mode' \
+'vault:Manage encrypted command vault' \
+'sync:Manage optional remote sync' \
+'completions:Generate shell completion scripts' \
+'man:Generate the mh man page' \
+'about:Show application and developer information' \
+'policy:Evaluate and inspect policy rules' \
+'timeline:Session timeline and incident forensics' \
+'hold:Manage legal holds and retention' \
+'watch:Stream audit events for SIEM integration' \
+'runbook:Manage reusable runbooks from sessions' \
+'break-glass:Emergency recording override with mandatory reason' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__about_commands] )) ||
+_mh__subcmd__about_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh about commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__audit_commands] )) ||
+_mh__subcmd__audit_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh audit commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass_commands] )) ||
+_mh__subcmd__break-glass_commands() {
+    local commands; commands=(
+'on:Activate break-glass mode' \
+'off:Deactivate break-glass mode' \
+'status:Show break-glass status' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh break-glass commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__help_commands] )) ||
+_mh__subcmd__break-glass__subcmd__help_commands() {
+    local commands; commands=(
+'on:Activate break-glass mode' \
+'off:Deactivate break-glass mode' \
+'status:Show break-glass status' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh break-glass help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__break-glass__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh break-glass help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__help__subcmd__off_commands] )) ||
+_mh__subcmd__break-glass__subcmd__help__subcmd__off_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh break-glass help off commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__help__subcmd__on_commands] )) ||
+_mh__subcmd__break-glass__subcmd__help__subcmd__on_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh break-glass help on commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__help__subcmd__status_commands] )) ||
+_mh__subcmd__break-glass__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh break-glass help status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__off_commands] )) ||
+_mh__subcmd__break-glass__subcmd__off_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh break-glass off commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__on_commands] )) ||
+_mh__subcmd__break-glass__subcmd__on_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh break-glass on commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__break-glass__subcmd__status_commands] )) ||
+_mh__subcmd__break-glass__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh break-glass status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__clear_commands] )) ||
+_mh__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh clear commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__completions_commands] )) ||
+_mh__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh completions commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config_commands] )) ||
+_mh__subcmd__config_commands() {
+    local commands; commands=(
+'show:Print the active configuration' \
+'path:Print the active configuration path' \
+'edit:Open the configuration in \$EDITOR' \
+'set:Set a configuration value using dotted path syntax' \
+'reset:Reset configuration to defaults' \
+'validate:Validate the active configuration' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh config commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__edit_commands] )) ||
+_mh__subcmd__config__subcmd__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config edit commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help_commands] )) ||
+_mh__subcmd__config__subcmd__help_commands() {
+    local commands; commands=(
+'show:Print the active configuration' \
+'path:Print the active configuration path' \
+'edit:Open the configuration in \$EDITOR' \
+'set:Set a configuration value using dotted path syntax' \
+'reset:Reset configuration to defaults' \
+'validate:Validate the active configuration' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh config help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help__subcmd__edit_commands] )) ||
+_mh__subcmd__config__subcmd__help__subcmd__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config help edit commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__config__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help__subcmd__path_commands] )) ||
+_mh__subcmd__config__subcmd__help__subcmd__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config help path commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help__subcmd__reset_commands] )) ||
+_mh__subcmd__config__subcmd__help__subcmd__reset_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config help reset commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help__subcmd__set_commands] )) ||
+_mh__subcmd__config__subcmd__help__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config help set commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help__subcmd__show_commands] )) ||
+_mh__subcmd__config__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config help show commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__help__subcmd__validate_commands] )) ||
+_mh__subcmd__config__subcmd__help__subcmd__validate_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config help validate commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__path_commands] )) ||
+_mh__subcmd__config__subcmd__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config path commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__reset_commands] )) ||
+_mh__subcmd__config__subcmd__reset_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config reset commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__set_commands] )) ||
+_mh__subcmd__config__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config set commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__show_commands] )) ||
+_mh__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config show commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__config__subcmd__validate_commands] )) ||
+_mh__subcmd__config__subcmd__validate_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh config validate commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context_commands] )) ||
+_mh__subcmd__context_commands() {
+    local commands; commands=(
+'repos:List tracked git repositories' \
+'branches:List branches recorded in history' \
+'history:Show command history for a git context' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh context commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__branches_commands] )) ||
+_mh__subcmd__context__subcmd__branches_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh context branches commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__help_commands] )) ||
+_mh__subcmd__context__subcmd__help_commands() {
+    local commands; commands=(
+'repos:List tracked git repositories' \
+'branches:List branches recorded in history' \
+'history:Show command history for a git context' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh context help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__help__subcmd__branches_commands] )) ||
+_mh__subcmd__context__subcmd__help__subcmd__branches_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh context help branches commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__context__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh context help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__help__subcmd__history_commands] )) ||
+_mh__subcmd__context__subcmd__help__subcmd__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh context help history commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__help__subcmd__repos_commands] )) ||
+_mh__subcmd__context__subcmd__help__subcmd__repos_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh context help repos commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__history_commands] )) ||
+_mh__subcmd__context__subcmd__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh context history commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__context__subcmd__repos_commands] )) ||
+_mh__subcmd__context__subcmd__repos_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh context repos commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__delete_commands] )) ||
+_mh__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__diff_commands] )) ||
+_mh__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh diff commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__doctor_commands] )) ||
+_mh__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh doctor commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__export_commands] )) ||
+_mh__subcmd__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh export commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help_commands] )) ||
+_mh__subcmd__help_commands() {
+    local commands; commands=(
+'init:Generate shell integration code' \
+'record:Record one executed command' \
+'search:Search command history' \
+'last:Show recent commands' \
+'stats:Show usage statistics' \
+'delete:Delete command history records' \
+'clear:Clear command history' \
+'export:Export command history' \
+'import:Import command history' \
+'doctor:Check local configuration and database health' \
+'config:Inspect configuration' \
+'tag:Add tags to commands' \
+'untag:Remove tags from a command' \
+'tags:List known tags' \
+'pin:Pin commands' \
+'unpin:Unpin commands' \
+'pinned:Show pinned commands' \
+'pick:Pick a command interactively and print it' \
+'tui:Launch the interactive terminal interface' \
+'snippet:Manage reusable command snippets' \
+'replay:Re-execute a command from history' \
+'risk:Assess and scan risky commands in history' \
+'context:Show git repository context for commands' \
+'diff:Compare history groups' \
+'audit:Show security audit log entries' \
+'private:Manage private mode' \
+'vault:Manage encrypted command vault' \
+'sync:Manage optional remote sync' \
+'completions:Generate shell completion scripts' \
+'man:Generate the mh man page' \
+'about:Show application and developer information' \
+'policy:Evaluate and inspect policy rules' \
+'timeline:Session timeline and incident forensics' \
+'hold:Manage legal holds and retention' \
+'watch:Stream audit events for SIEM integration' \
+'runbook:Manage reusable runbooks from sessions' \
+'break-glass:Emergency recording override with mandatory reason' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__about_commands] )) ||
+_mh__subcmd__help__subcmd__about_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help about commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__audit_commands] )) ||
+_mh__subcmd__help__subcmd__audit_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help audit commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__break-glass_commands] )) ||
+_mh__subcmd__help__subcmd__break-glass_commands() {
+    local commands; commands=(
+'on:Activate break-glass mode' \
+'off:Deactivate break-glass mode' \
+'status:Show break-glass status' \
+    )
+    _describe -t commands 'mh help break-glass commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__break-glass__subcmd__off_commands] )) ||
+_mh__subcmd__help__subcmd__break-glass__subcmd__off_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help break-glass off commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__break-glass__subcmd__on_commands] )) ||
+_mh__subcmd__help__subcmd__break-glass__subcmd__on_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help break-glass on commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__break-glass__subcmd__status_commands] )) ||
+_mh__subcmd__help__subcmd__break-glass__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help break-glass status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__clear_commands] )) ||
+_mh__subcmd__help__subcmd__clear_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help clear commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__completions_commands] )) ||
+_mh__subcmd__help__subcmd__completions_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help completions commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__config_commands] )) ||
+_mh__subcmd__help__subcmd__config_commands() {
+    local commands; commands=(
+'show:Print the active configuration' \
+'path:Print the active configuration path' \
+'edit:Open the configuration in \$EDITOR' \
+'set:Set a configuration value using dotted path syntax' \
+'reset:Reset configuration to defaults' \
+'validate:Validate the active configuration' \
+    )
+    _describe -t commands 'mh help config commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__config__subcmd__edit_commands] )) ||
+_mh__subcmd__help__subcmd__config__subcmd__edit_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help config edit commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__config__subcmd__path_commands] )) ||
+_mh__subcmd__help__subcmd__config__subcmd__path_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help config path commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__config__subcmd__reset_commands] )) ||
+_mh__subcmd__help__subcmd__config__subcmd__reset_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help config reset commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__config__subcmd__set_commands] )) ||
+_mh__subcmd__help__subcmd__config__subcmd__set_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help config set commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__config__subcmd__show_commands] )) ||
+_mh__subcmd__help__subcmd__config__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help config show commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__config__subcmd__validate_commands] )) ||
+_mh__subcmd__help__subcmd__config__subcmd__validate_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help config validate commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__context_commands] )) ||
+_mh__subcmd__help__subcmd__context_commands() {
+    local commands; commands=(
+'repos:List tracked git repositories' \
+'branches:List branches recorded in history' \
+'history:Show command history for a git context' \
+    )
+    _describe -t commands 'mh help context commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__context__subcmd__branches_commands] )) ||
+_mh__subcmd__help__subcmd__context__subcmd__branches_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help context branches commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__context__subcmd__history_commands] )) ||
+_mh__subcmd__help__subcmd__context__subcmd__history_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help context history commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__context__subcmd__repos_commands] )) ||
+_mh__subcmd__help__subcmd__context__subcmd__repos_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help context repos commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__delete_commands] )) ||
+_mh__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__diff_commands] )) ||
+_mh__subcmd__help__subcmd__diff_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help diff commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__doctor_commands] )) ||
+_mh__subcmd__help__subcmd__doctor_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help doctor commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__export_commands] )) ||
+_mh__subcmd__help__subcmd__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help export commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__hold_commands] )) ||
+_mh__subcmd__help__subcmd__hold_commands() {
+    local commands; commands=(
+'add:Create a legal hold' \
+'list:List legal holds' \
+'remove:Remove a legal hold' \
+'purge:Purge history older than retention policy' \
+    )
+    _describe -t commands 'mh help hold commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__hold__subcmd__add_commands] )) ||
+_mh__subcmd__help__subcmd__hold__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help hold add commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__hold__subcmd__list_commands] )) ||
+_mh__subcmd__help__subcmd__hold__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help hold list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__hold__subcmd__purge_commands] )) ||
+_mh__subcmd__help__subcmd__hold__subcmd__purge_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help hold purge commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__hold__subcmd__remove_commands] )) ||
+_mh__subcmd__help__subcmd__hold__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help hold remove commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__import_commands] )) ||
+_mh__subcmd__help__subcmd__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help import commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__init_commands] )) ||
+_mh__subcmd__help__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help init commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__last_commands] )) ||
+_mh__subcmd__help__subcmd__last_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help last commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__man_commands] )) ||
+_mh__subcmd__help__subcmd__man_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help man commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__pick_commands] )) ||
+_mh__subcmd__help__subcmd__pick_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help pick commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__pin_commands] )) ||
+_mh__subcmd__help__subcmd__pin_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help pin commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__pinned_commands] )) ||
+_mh__subcmd__help__subcmd__pinned_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help pinned commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__policy_commands] )) ||
+_mh__subcmd__help__subcmd__policy_commands() {
+    local commands; commands=(
+'list:List configured policy rules' \
+'check:Evaluate a command against policy rules' \
+    )
+    _describe -t commands 'mh help policy commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__policy__subcmd__check_commands] )) ||
+_mh__subcmd__help__subcmd__policy__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help policy check commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__policy__subcmd__list_commands] )) ||
+_mh__subcmd__help__subcmd__policy__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help policy list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__private_commands] )) ||
+_mh__subcmd__help__subcmd__private_commands() {
+    local commands; commands=(
+'on:Enable private mode' \
+'off:Disable private mode' \
+'status:Show private mode status' \
+    )
+    _describe -t commands 'mh help private commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__private__subcmd__off_commands] )) ||
+_mh__subcmd__help__subcmd__private__subcmd__off_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help private off commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__private__subcmd__on_commands] )) ||
+_mh__subcmd__help__subcmd__private__subcmd__on_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help private on commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__private__subcmd__status_commands] )) ||
+_mh__subcmd__help__subcmd__private__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help private status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__record_commands] )) ||
+_mh__subcmd__help__subcmd__record_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help record commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__replay_commands] )) ||
+_mh__subcmd__help__subcmd__replay_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help replay commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__risk_commands] )) ||
+_mh__subcmd__help__subcmd__risk_commands() {
+    local commands; commands=(
+'list:List risk detection rules' \
+'check:Check a single command string' \
+'scan:Scan saved history for risky commands' \
+    )
+    _describe -t commands 'mh help risk commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__risk__subcmd__check_commands] )) ||
+_mh__subcmd__help__subcmd__risk__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help risk check commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__risk__subcmd__list_commands] )) ||
+_mh__subcmd__help__subcmd__risk__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help risk list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__risk__subcmd__scan_commands] )) ||
+_mh__subcmd__help__subcmd__risk__subcmd__scan_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help risk scan commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__runbook_commands] )) ||
+_mh__subcmd__help__subcmd__runbook_commands() {
+    local commands; commands=(
+'list:List saved runbooks' \
+'show:Show runbook steps' \
+'create:Create a runbook from a session timeline' \
+'run:Execute runbook steps' \
+    )
+    _describe -t commands 'mh help runbook commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__runbook__subcmd__create_commands] )) ||
+_mh__subcmd__help__subcmd__runbook__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help runbook create commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__runbook__subcmd__list_commands] )) ||
+_mh__subcmd__help__subcmd__runbook__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help runbook list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__runbook__subcmd__run_commands] )) ||
+_mh__subcmd__help__subcmd__runbook__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help runbook run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__runbook__subcmd__show_commands] )) ||
+_mh__subcmd__help__subcmd__runbook__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help runbook show commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__search_commands] )) ||
+_mh__subcmd__help__subcmd__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help search commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__snippet_commands] )) ||
+_mh__subcmd__help__subcmd__snippet_commands() {
+    local commands; commands=(
+'save:Save a reusable command snippet' \
+'list:List snippets' \
+'run:Run a snippet with placeholders replaced' \
+'delete:Delete a snippet' \
+'export:Export snippets as JSON' \
+    )
+    _describe -t commands 'mh help snippet commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__snippet__subcmd__delete_commands] )) ||
+_mh__subcmd__help__subcmd__snippet__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help snippet delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__snippet__subcmd__export_commands] )) ||
+_mh__subcmd__help__subcmd__snippet__subcmd__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help snippet export commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__snippet__subcmd__list_commands] )) ||
+_mh__subcmd__help__subcmd__snippet__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help snippet list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__snippet__subcmd__run_commands] )) ||
+_mh__subcmd__help__subcmd__snippet__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help snippet run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__snippet__subcmd__save_commands] )) ||
+_mh__subcmd__help__subcmd__snippet__subcmd__save_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help snippet save commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__stats_commands] )) ||
+_mh__subcmd__help__subcmd__stats_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help stats commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__sync_commands] )) ||
+_mh__subcmd__help__subcmd__sync_commands() {
+    local commands; commands=(
+'status:Print sync status' \
+'setup:Store sync setup values' \
+'push:Push local history to a remote server' \
+'pull:Pull remote history' \
+'enable:Enable sync' \
+'disable:Disable sync' \
+    )
+    _describe -t commands 'mh help sync commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__sync__subcmd__disable_commands] )) ||
+_mh__subcmd__help__subcmd__sync__subcmd__disable_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help sync disable commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__sync__subcmd__enable_commands] )) ||
+_mh__subcmd__help__subcmd__sync__subcmd__enable_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help sync enable commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__sync__subcmd__pull_commands] )) ||
+_mh__subcmd__help__subcmd__sync__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help sync pull commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__sync__subcmd__push_commands] )) ||
+_mh__subcmd__help__subcmd__sync__subcmd__push_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help sync push commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__sync__subcmd__setup_commands] )) ||
+_mh__subcmd__help__subcmd__sync__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help sync setup commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__sync__subcmd__status_commands] )) ||
+_mh__subcmd__help__subcmd__sync__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help sync status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__tag_commands] )) ||
+_mh__subcmd__help__subcmd__tag_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help tag commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__tags_commands] )) ||
+_mh__subcmd__help__subcmd__tags_commands() {
+    local commands; commands=(
+'list:List all tags with command counts' \
+    )
+    _describe -t commands 'mh help tags commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__tags__subcmd__list_commands] )) ||
+_mh__subcmd__help__subcmd__tags__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help tags list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__timeline_commands] )) ||
+_mh__subcmd__help__subcmd__timeline_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help timeline commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__tui_commands] )) ||
+_mh__subcmd__help__subcmd__tui_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help tui commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__unpin_commands] )) ||
+_mh__subcmd__help__subcmd__unpin_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help unpin commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__untag_commands] )) ||
+_mh__subcmd__help__subcmd__untag_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help untag commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__vault_commands] )) ||
+_mh__subcmd__help__subcmd__vault_commands() {
+    local commands; commands=(
+'add:Add an encrypted command to the vault' \
+'list:List encrypted vault entries' \
+'run:Decrypt and run a vault command' \
+'delete:Delete a vault entry' \
+'unlock:Check vault unlock behavior' \
+'lock:Clear process-local vault state' \
+    )
+    _describe -t commands 'mh help vault commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__vault__subcmd__add_commands] )) ||
+_mh__subcmd__help__subcmd__vault__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help vault add commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__vault__subcmd__delete_commands] )) ||
+_mh__subcmd__help__subcmd__vault__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help vault delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__vault__subcmd__list_commands] )) ||
+_mh__subcmd__help__subcmd__vault__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help vault list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__vault__subcmd__lock_commands] )) ||
+_mh__subcmd__help__subcmd__vault__subcmd__lock_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help vault lock commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__vault__subcmd__run_commands] )) ||
+_mh__subcmd__help__subcmd__vault__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help vault run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__vault__subcmd__unlock_commands] )) ||
+_mh__subcmd__help__subcmd__vault__subcmd__unlock_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help vault unlock commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__help__subcmd__watch_commands] )) ||
+_mh__subcmd__help__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh help watch commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold_commands] )) ||
+_mh__subcmd__hold_commands() {
+    local commands; commands=(
+'add:Create a legal hold' \
+'list:List legal holds' \
+'remove:Remove a legal hold' \
+'purge:Purge history older than retention policy' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh hold commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__add_commands] )) ||
+_mh__subcmd__hold__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold add commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__help_commands] )) ||
+_mh__subcmd__hold__subcmd__help_commands() {
+    local commands; commands=(
+'add:Create a legal hold' \
+'list:List legal holds' \
+'remove:Remove a legal hold' \
+'purge:Purge history older than retention policy' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh hold help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__help__subcmd__add_commands] )) ||
+_mh__subcmd__hold__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold help add commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__hold__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__help__subcmd__list_commands] )) ||
+_mh__subcmd__hold__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold help list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__help__subcmd__purge_commands] )) ||
+_mh__subcmd__hold__subcmd__help__subcmd__purge_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold help purge commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__help__subcmd__remove_commands] )) ||
+_mh__subcmd__hold__subcmd__help__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold help remove commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__list_commands] )) ||
+_mh__subcmd__hold__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__purge_commands] )) ||
+_mh__subcmd__hold__subcmd__purge_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold purge commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__hold__subcmd__remove_commands] )) ||
+_mh__subcmd__hold__subcmd__remove_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh hold remove commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__import_commands] )) ||
+_mh__subcmd__import_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh import commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__init_commands] )) ||
+_mh__subcmd__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh init commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__last_commands] )) ||
+_mh__subcmd__last_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh last commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__man_commands] )) ||
+_mh__subcmd__man_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh man commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__pick_commands] )) ||
+_mh__subcmd__pick_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh pick commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__pin_commands] )) ||
+_mh__subcmd__pin_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh pin commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__pinned_commands] )) ||
+_mh__subcmd__pinned_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh pinned commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__policy_commands] )) ||
+_mh__subcmd__policy_commands() {
+    local commands; commands=(
+'list:List configured policy rules' \
+'check:Evaluate a command against policy rules' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh policy commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__policy__subcmd__check_commands] )) ||
+_mh__subcmd__policy__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh policy check commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__policy__subcmd__help_commands] )) ||
+_mh__subcmd__policy__subcmd__help_commands() {
+    local commands; commands=(
+'list:List configured policy rules' \
+'check:Evaluate a command against policy rules' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh policy help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__policy__subcmd__help__subcmd__check_commands] )) ||
+_mh__subcmd__policy__subcmd__help__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh policy help check commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__policy__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__policy__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh policy help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__policy__subcmd__help__subcmd__list_commands] )) ||
+_mh__subcmd__policy__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh policy help list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__policy__subcmd__list_commands] )) ||
+_mh__subcmd__policy__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh policy list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private_commands] )) ||
+_mh__subcmd__private_commands() {
+    local commands; commands=(
+'on:Enable private mode' \
+'off:Disable private mode' \
+'status:Show private mode status' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh private commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__help_commands] )) ||
+_mh__subcmd__private__subcmd__help_commands() {
+    local commands; commands=(
+'on:Enable private mode' \
+'off:Disable private mode' \
+'status:Show private mode status' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh private help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__private__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh private help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__help__subcmd__off_commands] )) ||
+_mh__subcmd__private__subcmd__help__subcmd__off_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh private help off commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__help__subcmd__on_commands] )) ||
+_mh__subcmd__private__subcmd__help__subcmd__on_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh private help on commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__help__subcmd__status_commands] )) ||
+_mh__subcmd__private__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh private help status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__off_commands] )) ||
+_mh__subcmd__private__subcmd__off_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh private off commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__on_commands] )) ||
+_mh__subcmd__private__subcmd__on_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh private on commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__private__subcmd__status_commands] )) ||
+_mh__subcmd__private__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh private status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__record_commands] )) ||
+_mh__subcmd__record_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh record commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__replay_commands] )) ||
+_mh__subcmd__replay_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh replay commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk_commands] )) ||
+_mh__subcmd__risk_commands() {
+    local commands; commands=(
+'list:List risk detection rules' \
+'check:Check a single command string' \
+'scan:Scan saved history for risky commands' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh risk commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__check_commands] )) ||
+_mh__subcmd__risk__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh risk check commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__help_commands] )) ||
+_mh__subcmd__risk__subcmd__help_commands() {
+    local commands; commands=(
+'list:List risk detection rules' \
+'check:Check a single command string' \
+'scan:Scan saved history for risky commands' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh risk help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__help__subcmd__check_commands] )) ||
+_mh__subcmd__risk__subcmd__help__subcmd__check_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh risk help check commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__risk__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh risk help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__help__subcmd__list_commands] )) ||
+_mh__subcmd__risk__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh risk help list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__help__subcmd__scan_commands] )) ||
+_mh__subcmd__risk__subcmd__help__subcmd__scan_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh risk help scan commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__list_commands] )) ||
+_mh__subcmd__risk__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh risk list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__risk__subcmd__scan_commands] )) ||
+_mh__subcmd__risk__subcmd__scan_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh risk scan commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook_commands] )) ||
+_mh__subcmd__runbook_commands() {
+    local commands; commands=(
+'list:List saved runbooks' \
+'show:Show runbook steps' \
+'create:Create a runbook from a session timeline' \
+'run:Execute runbook steps' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh runbook commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__create_commands] )) ||
+_mh__subcmd__runbook__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook create commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__help_commands] )) ||
+_mh__subcmd__runbook__subcmd__help_commands() {
+    local commands; commands=(
+'list:List saved runbooks' \
+'show:Show runbook steps' \
+'create:Create a runbook from a session timeline' \
+'run:Execute runbook steps' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh runbook help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__help__subcmd__create_commands] )) ||
+_mh__subcmd__runbook__subcmd__help__subcmd__create_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook help create commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__runbook__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__help__subcmd__list_commands] )) ||
+_mh__subcmd__runbook__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook help list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__help__subcmd__run_commands] )) ||
+_mh__subcmd__runbook__subcmd__help__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook help run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__help__subcmd__show_commands] )) ||
+_mh__subcmd__runbook__subcmd__help__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook help show commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__list_commands] )) ||
+_mh__subcmd__runbook__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__run_commands] )) ||
+_mh__subcmd__runbook__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__runbook__subcmd__show_commands] )) ||
+_mh__subcmd__runbook__subcmd__show_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh runbook show commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__search_commands] )) ||
+_mh__subcmd__search_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh search commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet_commands] )) ||
+_mh__subcmd__snippet_commands() {
+    local commands; commands=(
+'save:Save a reusable command snippet' \
+'list:List snippets' \
+'run:Run a snippet with placeholders replaced' \
+'delete:Delete a snippet' \
+'export:Export snippets as JSON' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh snippet commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__delete_commands] )) ||
+_mh__subcmd__snippet__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__export_commands] )) ||
+_mh__subcmd__snippet__subcmd__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet export commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__help_commands] )) ||
+_mh__subcmd__snippet__subcmd__help_commands() {
+    local commands; commands=(
+'save:Save a reusable command snippet' \
+'list:List snippets' \
+'run:Run a snippet with placeholders replaced' \
+'delete:Delete a snippet' \
+'export:Export snippets as JSON' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh snippet help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__help__subcmd__delete_commands] )) ||
+_mh__subcmd__snippet__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet help delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__help__subcmd__export_commands] )) ||
+_mh__subcmd__snippet__subcmd__help__subcmd__export_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet help export commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__snippet__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__help__subcmd__list_commands] )) ||
+_mh__subcmd__snippet__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet help list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__help__subcmd__run_commands] )) ||
+_mh__subcmd__snippet__subcmd__help__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet help run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__help__subcmd__save_commands] )) ||
+_mh__subcmd__snippet__subcmd__help__subcmd__save_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet help save commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__list_commands] )) ||
+_mh__subcmd__snippet__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__run_commands] )) ||
+_mh__subcmd__snippet__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__snippet__subcmd__save_commands] )) ||
+_mh__subcmd__snippet__subcmd__save_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh snippet save commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__stats_commands] )) ||
+_mh__subcmd__stats_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh stats commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync_commands] )) ||
+_mh__subcmd__sync_commands() {
+    local commands; commands=(
+'status:Print sync status' \
+'setup:Store sync setup values' \
+'push:Push local history to a remote server' \
+'pull:Pull remote history' \
+'enable:Enable sync' \
+'disable:Disable sync' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh sync commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__disable_commands] )) ||
+_mh__subcmd__sync__subcmd__disable_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync disable commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__enable_commands] )) ||
+_mh__subcmd__sync__subcmd__enable_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync enable commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help_commands] )) ||
+_mh__subcmd__sync__subcmd__help_commands() {
+    local commands; commands=(
+'status:Print sync status' \
+'setup:Store sync setup values' \
+'push:Push local history to a remote server' \
+'pull:Pull remote history' \
+'enable:Enable sync' \
+'disable:Disable sync' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh sync help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help__subcmd__disable_commands] )) ||
+_mh__subcmd__sync__subcmd__help__subcmd__disable_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync help disable commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help__subcmd__enable_commands] )) ||
+_mh__subcmd__sync__subcmd__help__subcmd__enable_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync help enable commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__sync__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help__subcmd__pull_commands] )) ||
+_mh__subcmd__sync__subcmd__help__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync help pull commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help__subcmd__push_commands] )) ||
+_mh__subcmd__sync__subcmd__help__subcmd__push_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync help push commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help__subcmd__setup_commands] )) ||
+_mh__subcmd__sync__subcmd__help__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync help setup commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__help__subcmd__status_commands] )) ||
+_mh__subcmd__sync__subcmd__help__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync help status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__pull_commands] )) ||
+_mh__subcmd__sync__subcmd__pull_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync pull commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__push_commands] )) ||
+_mh__subcmd__sync__subcmd__push_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync push commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__setup_commands] )) ||
+_mh__subcmd__sync__subcmd__setup_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync setup commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__sync__subcmd__status_commands] )) ||
+_mh__subcmd__sync__subcmd__status_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh sync status commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__tag_commands] )) ||
+_mh__subcmd__tag_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh tag commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__tags_commands] )) ||
+_mh__subcmd__tags_commands() {
+    local commands; commands=(
+'list:List all tags with command counts' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh tags commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__tags__subcmd__help_commands] )) ||
+_mh__subcmd__tags__subcmd__help_commands() {
+    local commands; commands=(
+'list:List all tags with command counts' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh tags help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__tags__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__tags__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh tags help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__tags__subcmd__help__subcmd__list_commands] )) ||
+_mh__subcmd__tags__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh tags help list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__tags__subcmd__list_commands] )) ||
+_mh__subcmd__tags__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh tags list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__timeline_commands] )) ||
+_mh__subcmd__timeline_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh timeline commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__tui_commands] )) ||
+_mh__subcmd__tui_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh tui commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__unpin_commands] )) ||
+_mh__subcmd__unpin_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh unpin commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__untag_commands] )) ||
+_mh__subcmd__untag_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh untag commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault_commands] )) ||
+_mh__subcmd__vault_commands() {
+    local commands; commands=(
+'add:Add an encrypted command to the vault' \
+'list:List encrypted vault entries' \
+'run:Decrypt and run a vault command' \
+'delete:Delete a vault entry' \
+'unlock:Check vault unlock behavior' \
+'lock:Clear process-local vault state' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh vault commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__add_commands] )) ||
+_mh__subcmd__vault__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault add commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__delete_commands] )) ||
+_mh__subcmd__vault__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help_commands] )) ||
+_mh__subcmd__vault__subcmd__help_commands() {
+    local commands; commands=(
+'add:Add an encrypted command to the vault' \
+'list:List encrypted vault entries' \
+'run:Decrypt and run a vault command' \
+'delete:Delete a vault entry' \
+'unlock:Check vault unlock behavior' \
+'lock:Clear process-local vault state' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'mh vault help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help__subcmd__add_commands] )) ||
+_mh__subcmd__vault__subcmd__help__subcmd__add_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault help add commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help__subcmd__delete_commands] )) ||
+_mh__subcmd__vault__subcmd__help__subcmd__delete_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault help delete commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help__subcmd__help_commands] )) ||
+_mh__subcmd__vault__subcmd__help__subcmd__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault help help commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help__subcmd__list_commands] )) ||
+_mh__subcmd__vault__subcmd__help__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault help list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help__subcmd__lock_commands] )) ||
+_mh__subcmd__vault__subcmd__help__subcmd__lock_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault help lock commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help__subcmd__run_commands] )) ||
+_mh__subcmd__vault__subcmd__help__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault help run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__help__subcmd__unlock_commands] )) ||
+_mh__subcmd__vault__subcmd__help__subcmd__unlock_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault help unlock commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__list_commands] )) ||
+_mh__subcmd__vault__subcmd__list_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault list commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__lock_commands] )) ||
+_mh__subcmd__vault__subcmd__lock_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault lock commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__run_commands] )) ||
+_mh__subcmd__vault__subcmd__run_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault run commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__vault__subcmd__unlock_commands] )) ||
+_mh__subcmd__vault__subcmd__unlock_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh vault unlock commands' commands "$@"
+}
+(( $+functions[_mh__subcmd__watch_commands] )) ||
+_mh__subcmd__watch_commands() {
+    local commands; commands=()
+    _describe -t commands 'mh watch commands' commands "$@"
+}
+
+if [ "$funcstack[1]" = "_mh" ]; then
+    _mh "$@"
+else
+    compdef _mh mh
+fi

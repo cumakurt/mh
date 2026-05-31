@@ -1,0 +1,5 @@
+$ mh about
+mh 0.1.0
+Author: Cuma Kurt <cumakurt@gmail.com>
+GitHub: https://github.com/cumakurt/mh
+LinkedIn: https://www.linkedin.com/in/cuma-kurt-34414917/

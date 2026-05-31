@@ -1,0 +1,2 @@
+$ mh export --json history.json
+Exported 6 command record(s)

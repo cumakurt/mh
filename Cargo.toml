@@ -2,7 +2,9 @@
 name = "mh"
 version = "0.1.0"
 edition = "2024"
+description = "Modern Linux shell history manager"
 authors = ["Cuma Kurt <cumakurt@gmail.com>"]
+license = "AGPL-3.0-or-later"
 repository = "https://github.com/cumakurt/mh"
 homepage = "https://github.com/cumakurt/mh"
 

@@ -1,6 +1,10 @@
 # mh
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+
 `mh` is a modern Linux command history manager written in Rust. It records shell commands into a local SQLite database, then makes that history searchable, filterable, taggable, auditable, exportable, and usable from an interactive terminal interface. Enterprise features include a unified policy engine, tamper-evident audit logs, session forensics, legal holds, runbooks, environment classification, SIEM streaming, and break-glass mode.
+
+**License:** `mh` is distributed under the [GNU Affero General Public License v3.0 or later](LICENSE) (AGPL-3.0-or-later). You may use, modify, and redistribute it under the terms of that license. If you run a modified version as a network service, you must offer corresponding source to users interacting with it over the network.
 
 The command name is intentionally short:
 
@@ -13,6 +17,7 @@ mh
 - Author: Cuma Kurt <cumakurt@gmail.com>
 - GitHub: https://github.com/cumakurt/mh
 - LinkedIn: https://www.linkedin.com/in/cuma-kurt-34414917/
+- License: [AGPL-3.0-or-later](LICENSE) — see the [License](#license) section below
 
 ## What mh Does
 
@@ -2296,6 +2301,17 @@ target/release/mh import "$tmpdir/history.json" --dry-run
 target/release/mh doctor
 target/release/mh doctor --json | jq -e '.status'
 ```
+
+## License
+
+`mh` is **free software** released under the **GNU Affero General Public License v3.0 or later** (AGPL-3.0-or-later).
+
+- Full license text: [LICENSE](LICENSE)
+- SPDX identifier: `AGPL-3.0-or-later`
+
+You are free to use, study, modify, and redistribute this program in accordance with the AGPL. Copyleft obligations apply, including when you offer the software to others over a network (SaaS/API). Derivative works must remain under the same license and include prominent notices as required by the AGPL.
+
+Copyright © 2026 Cuma Kurt. See [LICENSE](LICENSE) for the complete terms.
 
 ## Language Rule
 

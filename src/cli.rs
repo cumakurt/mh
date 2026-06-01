@@ -4,9 +4,9 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 #[command(name = "mh")]
 #[command(version)]
 #[command(author)]
-#[command(about = "A modern command history manager")]
+#[command(about = "A modern command history manager (AGPL-3.0-or-later)")]
 #[command(
-    after_help = "Author: Cuma Kurt <cumakurt@gmail.com>\nGitHub: https://github.com/cumakurt/mh\nLinkedIn: https://www.linkedin.com/in/cuma-kurt-34414917/"
+    after_help = "Author: Cuma Kurt <cumakurt@gmail.com>\nGitHub: https://github.com/cumakurt/mh\nLinkedIn: https://www.linkedin.com/in/cuma-kurt-34414917/\nLicense: AGPL-3.0-or-later (see LICENSE in the source distribution)"
 )]
 pub struct Cli {
     #[command(subcommand)]

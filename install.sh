@@ -605,6 +605,7 @@ main() {
   run_doctor
 
   log "Installation completed."
+  log "mh is distributed under AGPL-3.0-or-later; see LICENSE in the source tree."
   log "Open a new shell session or reload your shell config to activate command recording."
 }
 

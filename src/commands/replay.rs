@@ -101,6 +101,10 @@ pub fn run(args: ReplayArgs) -> Result<()> {
         return Ok(());
     }
 
+    for warning in security::stored_command_execution_warnings(&row.command, row.is_masked)? {
+        eprintln!("Warning: {warning}");
+    }
+
     if let Some(assessment) = risk::assess_command(&row.command) {
         eprintln!(
             "Warning: {} risk command ({})",

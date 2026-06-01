@@ -57,6 +57,11 @@ pub fn run(args: ConfigArgs) -> Result<()> {
             for warning in &warnings {
                 eprintln!("warning: {warning}");
             }
+            if let Ok(db_path) = config.database_path() {
+                for warning in crate::config::database_path_warnings(&db_path) {
+                    eprintln!("warning: {warning}");
+                }
+            }
             if warnings.is_empty() {
                 println!("Config is valid");
             } else {

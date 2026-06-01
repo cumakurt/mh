@@ -533,6 +533,49 @@ pub fn private_mode_path() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(".mh-private"))
 }
 
+/// Warnings when `MH_DB` or the configured database path may cross user/privilege boundaries.
+pub fn database_path_warnings(path: &Path) -> Vec<String> {
+    let mut warnings = Vec::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+
+        let current_uid = unsafe { libc::geteuid() };
+        let current_user = whoami::username();
+        if path.exists()
+            && let Ok(meta) = fs::metadata(path)
+            && meta.uid() != current_uid
+        {
+            warnings.push(format!(
+                "database file is owned by uid {} but current euid is {current_uid}",
+                meta.uid()
+            ));
+        }
+
+        if let Some(path_str) = path.to_str() {
+            if let Some(rest) = path_str.strip_prefix("/home/")
+                && let Some(owner) = rest.split('/').next().filter(|name| !name.is_empty())
+                && owner != current_user
+            {
+                warnings.push(format!(
+                    "database path is under /home/{owner} but current user is {current_user}"
+                ));
+            } else if path_str.starts_with("/root/") && current_uid != 0 {
+                warnings.push(
+                    "database path is under /root but current user is not root".to_string(),
+                );
+            }
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        let _ = path;
+    }
+
+    warnings
+}
+
 pub fn restrict_file_permissions(path: &Path) -> Result<()> {
     if !path.exists() {
         return Ok(());
@@ -999,6 +1042,25 @@ mod tests {
             .mode()
             & 0o777;
         assert_eq!(file_mode, 0o600);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn database_path_warnings_detect_foreign_home() {
+        let current = whoami::username();
+        let foreign = if current == "mh_foreign_db_user" {
+            "otheruser"
+        } else {
+            "mh_foreign_db_user"
+        };
+        let path = PathBuf::from(format!("/home/{foreign}/.local/share/mh/history.db"));
+        let warnings = database_path_warnings(&path);
+        assert!(
+            warnings
+                .iter()
+                .any(|warning| warning.contains(foreign)),
+            "expected foreign home warning for {foreign}, got: {warnings:?}"
+        );
     }
 
     #[test]

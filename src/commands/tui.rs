@@ -615,6 +615,23 @@ mod tests {
         assert_eq!(app.message, "Delete cancelled");
     }
 
+    #[test]
+    fn detail_text_marks_masked_commands() {
+        let mut masked = row("mysql -p****");
+        masked.is_masked = true;
+        let text = detail_text(Some(&masked));
+        assert!(text.contains("Masked: true"));
+        assert!(text.contains("mysql"));
+    }
+
+    #[test]
+    fn search_text_includes_tags_for_fuzzy_filter() {
+        let mut tagged = row("deploy");
+        tagged.tags = vec!["production".to_string()];
+        assert!(search_text(&tagged).contains("production"));
+        assert_eq!(filter_indices(&[tagged], "prod"), vec![0]);
+    }
+
     fn row(command: &str) -> CommandRow {
         CommandRow {
             id: 1,

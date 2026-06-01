@@ -8,6 +8,7 @@ use crate::config::AppConfig;
 use crate::db::Database;
 use crate::execution_policy::ensure_execution_allowed;
 use crate::output::styling::Styler;
+use crate::security;
 
 pub fn run(args: RunbookArgs) -> Result<()> {
     let config = AppConfig::load()?;
@@ -63,6 +64,11 @@ pub fn run(args: RunbookArgs) -> Result<()> {
                 if dry_run {
                     println!("[dry-run] {}", step.command);
                     continue;
+                }
+                for warning in
+                    security::stored_command_execution_warnings(&step.command, false)?
+                {
+                    eprintln!("Warning (runbook step {}): {warning}", step.step_order);
                 }
                 ensure_execution_allowed(&config, &step.command, hostname.as_deref(), None)?;
                 let cwd = step.cwd.as_deref().map(Path::new);

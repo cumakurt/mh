@@ -1016,6 +1016,18 @@ fn check_env_override_paths(styler: &Styler) {
             check_file_permissions(styler, &expanded, &expanded);
             check_symlinks(styler, &expanded, &expanded);
         }
+        for warning in crate::config::database_path_warnings(&expanded) {
+            say(styler, StatusLevel::Warn, warning);
+        }
+    }
+
+    if env::var("MH_DB").is_err()
+        && let Ok(config) = AppConfig::load()
+        && let Ok(path) = config.database_path()
+    {
+        for warning in crate::config::database_path_warnings(&path) {
+            say(styler, StatusLevel::Warn, warning);
+        }
     }
 }
 

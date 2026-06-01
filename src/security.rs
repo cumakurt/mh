@@ -181,6 +181,26 @@ fn process_command_with_engine(
     })
 }
 
+/// User-visible warnings before replaying or running stored commands from a runbook.
+pub fn stored_command_execution_warnings(command: &str, is_masked: bool) -> Result<Vec<String>> {
+    let mut warnings = vec![
+        "mh executes stored shell commands with your current shell and privileges".to_string(),
+    ];
+    if is_masked {
+        warnings.push(
+            "this command was stored with secret masking; review the text before running"
+                .to_string(),
+        );
+    }
+    if contains_secret(command)? {
+        warnings.push(
+            "stored command still matches secret heuristics; verify it is safe to run"
+                .to_string(),
+        );
+    }
+    Ok(warnings)
+}
+
 pub fn private_mode_enabled(config: &AppConfig) -> bool {
     env::var(&config.security.private_mode_env)
         .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "on"))
@@ -206,6 +226,11 @@ pub fn contains_secret(command: &str) -> Result<bool> {
         || kubectl_secret_literal_regex()?.is_match(command)
         || npm_config_secret_regex()?.is_match(command)
         || helm_set_secret_regex()?.is_match(command)
+        || pip_password_flag_regex()?.is_match(command)
+        || poetry_http_basic_regex()?.is_match(command)
+        || poetry_token_env_regex()?.is_match(command)
+        || cargo_login_regex()?.is_match(command)
+        || cargo_registry_token_env_regex()?.is_match(command)
         || contains_private_key_pem(command)?)
 }
 
@@ -241,6 +266,11 @@ const MASKING_PATTERNS: &[&str] = &[
     r#"(?i)(kubectl\b[^\n]*--from-literal=)([^\s"']+)"#,
     r#"(?i)(npm_config_[^\s=]*(?:token|password|secret|auth|key)[^\s=]*\s*=\s*)([^\s]+)"#,
     r#"(?i)(helm\b[^\n]*\s--set(?:-string)?\s+[^,\s]*(?:password|secret|token|api[_-]?key)\s*=\s*)([^,\s]+)"#,
+    r#"(?i)(pip\d*\s+[^\n]*\s--password\s+)([^\s"']+)"#,
+    r#"(?i)(poetry\s+config\s+http-basic\.[^\s]+\s+\S+\s+)(\S+)"#,
+    r#"(?i)(POETRY_[^\s=]*TOKEN[^\s=]*\s*=\s*)([^\s]+)"#,
+    r#"(?i)(cargo\s+login\s+(?:--registry\s+\S+\s+)?)(\S+)"#,
+    r#"(?i)(CARGO_REGISTRIES_[^\s=]*_TOKEN\s*=\s*)([^\s]+)"#,
 ];
 
 const MASKING_REPLACEMENTS: &[&str] = &[
@@ -262,6 +292,10 @@ const MASKING_REPLACEMENTS: &[&str] = &[
     "$1****",
     "$1****",
     "$1****$3",
+    "$1****",
+    "$1****",
+    "$1****",
+    "$1****",
     "$1****",
     "$1****",
     "$1****",
@@ -435,6 +469,51 @@ fn helm_set_secret_regex() -> Result<&'static Regex> {
         &RE,
         "helm set secret",
         r#"(?i)helm\b[^\n]*\s--set(?:-string)?\s+[^,\s]*(?:password|secret|token|api[_-]?key)\s*=\s*[^,\s]+"#,
+    )
+}
+
+fn pip_password_flag_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "pip password flag",
+        r#"(?i)pip\d*\s+[^\n]*\s--password\s+\S+"#,
+    )
+}
+
+fn poetry_http_basic_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "poetry http-basic",
+        r#"(?i)poetry\s+config\s+http-basic\.[^\s]+\s+\S+\s+\S+"#,
+    )
+}
+
+fn poetry_token_env_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "poetry token env",
+        r"(?i)POETRY_[^\s=]*TOKEN[^\s=]*\s*=\s*\S+",
+    )
+}
+
+fn cargo_login_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "cargo login token",
+        r#"(?i)cargo\s+login\s+(?:--registry\s+\S+\s+)?\S+"#,
+    )
+}
+
+fn cargo_registry_token_env_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "cargo registry token env",
+        r"(?i)CARGO_REGISTRIES_[^\s=]*_TOKEN\s*=\s*\S+",
     )
 }
 

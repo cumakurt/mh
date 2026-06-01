@@ -115,11 +115,16 @@ Install `python3` on minimal images (Alpine, slim containers) for best duration 
 - **`sudo` / `su`**: switching users switches the active home and database; hooks in the target user shell record to that user DB.
 - **Record daemon**: Unix socket under `$XDG_RUNTIME_DIR/mh/record.sock` when set (typical on systemd/logind desktops), otherwise `~/.local/share/mh/record.sock`. Only the same UID may write (peer credential check). No fallback to world-writable `/tmp`.
 
+### Multiline commands and HEREDOCs
+
+Shell hooks record the command line as the shell presents it to `preexec` / `DEBUG` / `fish_preexec`. Commands built from HEREDOCs, continued lines, or editor buffers may appear as a single logical line or only capture the first line depending on the shell. Prefer `mh record` manually or snippets/runbooks for multi-step flows you need preserved verbatim.
+
 ### Not supported in this release
 
 - macOS / BSD (hooks are Linux-oriented; database code is portable but not CI-tested outside Linux)
 - Windows / WSL is best-effort only
 - PowerShell as a recording shell
+- **Fleet control plane (`mh-server`)** — remote sync uses optional `mh sync` with `--features sync` and a compatible HTTP API; a dedicated multi-tenant server is not part of this repository
 
 ## Command Gallery
 
@@ -1467,7 +1472,9 @@ Replay with policy approval reason:
 mh replay 152 --reason "change ticket INC-1234" --yes
 ```
 
-Replay uses `$SHELL -lc <command>`. If `$SHELL` is not set, it falls back to `/bin/sh`.
+Replay uses `$SHELL -c <command>` (non-login). If `$SHELL` is not set, it falls back to `/bin/sh`.
+
+Before execution, `mh replay` prints warnings when the stored command was masked, still matches secret heuristics, or will run with your current privileges. Use `--dry-run` to print the redacted command without executing. `mh runbook run` applies the same warnings per step.
 
 When a matching policy rule has action `deny`, replay is blocked and an audit entry is written. When action is `require_approval`, pass `--reason` or `--yes`.
 
@@ -1516,6 +1523,9 @@ Default secret detection looks for sensitive terms and patterns such as:
 - `kubectl --token=`, `--from-literal=`, `redis-cli -a`
 - `npm_config_*` variables containing `token`, `password`, `secret`, `auth`, or `key`
 - `helm … --set …password|secret|token…=`
+- `pip install … --password …`
+- `poetry config http-basic.*` and `POETRY_*TOKEN*` environment variables
+- `cargo login` tokens and `CARGO_REGISTRIES_*_TOKEN`
 - `curl -u user:pass` and `curl --user` (scoped to `curl` only)
 - `wget --password=`
 - Credit-card-like number sequences (Luhn-validated to reduce false positives)
@@ -1830,7 +1840,7 @@ mh doctor --json      # structured report on stdout (no styled text)
 `mh doctor` checks:
 
 - Config file loading and validation (`mh config validate` hints on failure)
-- Environment overrides (`MH_CONFIG`, `MH_DB`) — rejects `MH_DB` when it points to a directory
+- Environment overrides (`MH_CONFIG`, `MH_DB`) — rejects `MH_DB` when it points to a directory; warns when the database path is owned by another user or lives under another user's `/home`
 - Database opening and writable data directory
 - Config/database/WAL file permissions and symlink targets
 - Database file size versus configured max size
@@ -2173,6 +2183,7 @@ GitHub Actions workflows under `.github/workflows/`:
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `ci.yml` | push/PR to `main`/`master` | fmt, check, clippy, full test suite (incl. `sync` feature), record benchmarks (≤20 ms/op), search bench at 10k + 100k with `MH_BENCH_ASSERT`, `mh doctor --json` validation, `cargo audit`, release builds |
+| `zsh-smoke.yml` | push/PR + manual | `scripts/zsh-smoke.sh` — Zsh hook + `__mh_now_ms` + record path (Kali-style non-interactive) |
 | `bench-load.yml` | weekly + manual | Search/load benchmark at 100k–1M rows (`MH_BENCH_SEARCH_SIZE`) |
 | `release.yml` | tags | Release artifacts |
 

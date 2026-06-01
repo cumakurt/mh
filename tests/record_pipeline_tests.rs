@@ -225,3 +225,56 @@ fn pipeline_clamps_negative_duration_to_zero() {
     let row = database.get_command(1).expect("command");
     assert_eq!(row.duration_ms, Some(0));
 }
+
+#[test]
+fn pipeline_masks_critical_secret_commands_end_to_end() {
+    let cases = [
+        ("mysql -u root -pSecret123", "Secret123"),
+        (
+            r#"curl -H "Authorization: Bearer abc123" https://api.example.com"#,
+            "abc123",
+        ),
+        ("export AWS_SECRET_ACCESS_KEY=xxxx", "xxxx"),
+        ("sshpass -p password ssh root@1.1.1.1", "password"),
+        ("docker login -u user -p password", "password"),
+        ("kubectl config set-credentials user --token=abc", "abc"),
+    ];
+
+    for (index, (command, secret)) in cases.iter().enumerate() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let mut config = AppConfig::default();
+        config.database.path = temp_dir
+            .path()
+            .join(format!("history-{index}.db"))
+            .to_string_lossy()
+            .to_string();
+        mh::record_engines::invalidate_cache();
+
+        let database = Database::open(&config).expect("open database");
+        execute(
+            &config,
+            &database,
+            &RecordPayload {
+                command: (*command).to_string(),
+                cwd: Some("/tmp".to_string()),
+                shell: Some("test".to_string()),
+                exit_code: Some(0),
+                duration_ms: Some(1),
+                started_at: None,
+                finished_at: None,
+                session_id: Some(format!("sess-{index}")),
+                tty: None,
+                tags: None,
+                env_context: None,
+            },
+        )
+        .expect("execute");
+
+        let row = database.get_command(1).expect("stored command");
+        assert!(
+            !row.command.contains(secret),
+            "secret leaked for command: {command}"
+        );
+        assert!(row.is_masked, "expected masked flag for: {command}");
+    }
+}

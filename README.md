@@ -2313,6 +2313,4 @@ You are free to use, study, modify, and redistribute this program in accordance 
 
 Copyright © 2026 Cuma Kurt. See [LICENSE](LICENSE) for the complete terms.
 
-## Language Rule
 
-All source code, identifiers, comments, CLI strings, and documentation in this repository are written in English. Turkish is reserved for project discussion and the planning document only.

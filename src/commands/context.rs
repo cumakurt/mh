@@ -1,6 +1,4 @@
 use anyhow::Result;
-use comfy_table::{Table, presets::UTF8_FULL};
-
 use crate::cli::{
     ContextArgs, ContextBranchArgs, ContextCommand, ContextHistoryArgs, ContextListArgs,
 };
@@ -10,6 +8,7 @@ use crate::git_detect;
 use crate::models::{SearchFilters, StatEntry};
 use crate::output;
 use crate::output::styling::Styler;
+use crate::output::table_format::{header_cell, new_table, print_section};
 
 pub fn run(args: ContextArgs) -> Result<()> {
     match args.command {
@@ -120,20 +119,25 @@ fn print_stat_entries(styler: &Styler, title: &str, entries: &[StatEntry]) {
         return;
     }
 
-    let mut table = Table::new();
-    table.load_preset(UTF8_FULL);
+    let mut table = new_table();
     table.set_header(vec![
-        styler.cell("Label", Some(comfy_table::Color::Cyan)),
-        styler.cell("Commands", Some(comfy_table::Color::Cyan)),
+        header_cell(styler, "Label"),
+        header_cell(styler, "Commands"),
     ]);
 
     for entry in entries {
         table.add_row(vec![
             styler.cell(&entry.label, None),
-            styler.cell(entry.count, Some(comfy_table::Color::Green)),
+            styler.cell(
+                entry.count,
+                if styler.enabled() {
+                    Some(comfy_table::Color::Green)
+                } else {
+                    None
+                },
+            ),
         ]);
     }
 
-    println!("{}:", styler.section_title(title));
-    println!("{table}");
+    print_section(styler, title, &table);
 }

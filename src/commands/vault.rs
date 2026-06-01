@@ -4,7 +4,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use aes_gcm::aead::{Aead, OsRng};
 use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use anyhow::{Context, Result, bail};
-use comfy_table::{Cell, Table, presets::UTF8_FULL};
 use rand::RngCore;
 use sha2::{Digest, Sha256};
 
@@ -13,6 +12,8 @@ use crate::command_exec::execute_shell_command;
 use crate::config::AppConfig;
 use crate::db::Database;
 use crate::execution_policy::ensure_execution_allowed;
+use crate::output::styling::Styler;
+use crate::output::table_format::{header_cell, new_table, print_section};
 
 const KEYRING_SERVICE: &str = "mh-vault";
 const KEYRING_USER: &str = "passphrase";
@@ -55,17 +56,21 @@ fn list() -> Result<()> {
     let database = Database::open(&config)?;
     let rows = database.list_vault_entries()?;
 
-    let mut table = Table::new();
-    table.load_preset(UTF8_FULL);
-    table.set_header(vec!["ID", "Created", "Label"]);
+    let styler = Styler::from_config(&config);
+    let mut table = new_table();
+    table.set_header(vec![
+        header_cell(&styler, "ID"),
+        header_cell(&styler, "Created"),
+        header_cell(&styler, "Label"),
+    ]);
     for row in rows {
         table.add_row(vec![
-            Cell::new(row.id),
-            Cell::new(row.created_at),
-            Cell::new(row.label.unwrap_or_else(|| "-".to_string())),
+            styler.cell(row.id, None),
+            styler.cell(row.created_at, None),
+            styler.cell(row.label.unwrap_or_else(|| "-".to_string()), None),
         ]);
     }
-    println!("{table}");
+    print_section(&styler, "Vault entries", &table);
     Ok(())
 }
 

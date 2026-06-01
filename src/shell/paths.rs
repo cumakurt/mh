@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn bash_prefers_bashrc_when_present() {
-        let home = tempfile::tempdir().expect("tempdir");
+        let home = crate::config::private_tempdir().expect("temp dir");
         let bashrc = home.path().join(".bashrc");
         std::fs::write(&bashrc, "# bash").expect("write");
         let resolved = resolve_config_path(ShellKind::Bash, home.path());
@@ -62,7 +62,7 @@ mod tests {
 
     #[test]
     fn bash_falls_back_to_bash_profile() {
-        let home = tempfile::tempdir().expect("tempdir");
+        let home = crate::config::private_tempdir().expect("temp dir");
         let profile = home.path().join(".bash_profile");
         std::fs::write(&profile, "# profile").expect("write");
         let resolved = resolve_config_path(ShellKind::Bash, home.path());
@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn zsh_defaults_to_zshrc_when_missing() {
-        let home = tempfile::tempdir().expect("tempdir");
+        let home = crate::config::private_tempdir().expect("temp dir");
         let resolved = resolve_config_path(ShellKind::Zsh, home.path());
         assert_eq!(resolved, home.path().join(".zshrc"));
     }

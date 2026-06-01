@@ -28,7 +28,7 @@ fn policy_denies_critical_in_production() {
 
 #[test]
 fn audit_hash_chain_links_entries() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let config = isolated_config(&temp_dir);
     let database = Database::open(&config).expect("database");
 
@@ -45,7 +45,7 @@ fn audit_hash_chain_links_entries() {
 
 #[test]
 fn legal_hold_blocks_retention_purge() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let config = isolated_config(&temp_dir);
     let database = Database::open(&config).expect("database");
 
@@ -94,7 +94,7 @@ fn legal_hold_blocks_retention_purge() {
 
 #[test]
 fn runbook_is_created_from_session() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let config = isolated_config(&temp_dir);
     let database = Database::open(&config).expect("database");
     let session = "session-runbook";
@@ -159,7 +159,7 @@ fn break_glass_state_expires() {
 
 #[test]
 fn timeline_returns_session_commands() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let config = isolated_config(&temp_dir);
     let database = Database::open(&config).expect("database");
     let session = "timeline-session";
@@ -199,7 +199,7 @@ fn timeline_returns_session_commands() {
 
 #[test]
 fn stored_environment_tier_enforces_production_replay_policy() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let config = isolated_config(&temp_dir);
     let database = Database::open(&config).expect("database");
 

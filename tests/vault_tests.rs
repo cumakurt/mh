@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 
 #[test]
 fn stores_and_reads_encrypted_vault_entries() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 

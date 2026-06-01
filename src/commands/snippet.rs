@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
-use comfy_table::{Cell, Table, presets::UTF8_FULL};
 use regex::Regex;
 
 use crate::cli::{SnippetArgs, SnippetCommand};
@@ -10,6 +9,8 @@ use crate::command_exec::execute_shell_command;
 use crate::config::{self, AppConfig};
 use crate::db::Database;
 use crate::execution_policy::ensure_execution_allowed;
+use crate::output::styling::Styler;
+use crate::output::table_format::{header_cell, new_table, print_section, truncate_display};
 
 pub fn run(args: SnippetArgs) -> Result<()> {
     match args.command {
@@ -39,18 +40,26 @@ fn list() -> Result<()> {
     let database = Database::open(&config)?;
     let snippets = database.list_snippets()?;
 
-    let mut table = Table::new();
-    table.load_preset(UTF8_FULL);
-    table.set_header(vec!["Name", "Uses", "Description", "Command"]);
+    let styler = Styler::from_config(&config);
+    let mut table = new_table();
+    table.set_header(vec![
+        header_cell(&styler, "Name"),
+        header_cell(&styler, "Uses"),
+        header_cell(&styler, "Description"),
+        header_cell(&styler, "Command"),
+    ]);
     for snippet in snippets {
         table.add_row(vec![
-            Cell::new(snippet.name),
-            Cell::new(snippet.use_count),
-            Cell::new(snippet.description.unwrap_or_else(|| "-".to_string())),
-            Cell::new(snippet.command),
+            styler.cell(snippet.name, None),
+            styler.cell(snippet.use_count, None),
+            styler.cell(
+                snippet.description.unwrap_or_else(|| "-".to_string()),
+                None,
+            ),
+            styler.cell(truncate_display(&snippet.command, 56), None),
         ]);
     }
-    println!("{table}");
+    print_section(&styler, "Snippets", &table);
     Ok(())
 }
 

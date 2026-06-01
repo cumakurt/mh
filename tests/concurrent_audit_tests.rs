@@ -6,7 +6,7 @@ use mh::db::Database;
 
 #[test]
 fn concurrent_audit_inserts_preserve_hash_chain() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()

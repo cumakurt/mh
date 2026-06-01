@@ -5,6 +5,7 @@ use crate::config::AppConfig;
 use crate::db::Database;
 use crate::models::{StatEntry, StatsPeriod};
 use crate::output::styling::Styler;
+use crate::output::table_format::print_stat_section;
 
 pub fn run(args: StatsArgs) -> Result<()> {
     let period = period_from_args(&args)?;
@@ -70,16 +71,14 @@ pub fn run(args: StatsArgs) -> Result<()> {
         println!("{}", styler.label_value("Peak hour", peak_hour));
     }
 
-    print_entries(&styler, "Top commands", &summary.top_commands);
-    print_entries(&styler, "Top directories", &summary.top_directories);
-    print_entries(
-        &styler,
-        "Error-prone commands",
-        &summary.error_prone_commands,
-    );
-    print_entries(&styler, "Shells", &summary.shell_counts);
+    println!("{}", styler.separator());
+
+    print_stat_section(&styler, "Top commands", &summary.top_commands);
+    print_stat_section(&styler, "Top directories", &summary.top_directories);
+    print_stat_section(&styler, "Error-prone commands", &summary.error_prone_commands);
+    print_stat_section(&styler, "Shells", &summary.shell_counts);
     if args.category || !summary.category_counts.is_empty() {
-        print_entries(&styler, "Categories", &summary.category_counts);
+        print_stat_section(&styler, "Categories", &summary.category_counts);
     }
     if args.heatmap {
         let heatmap = database.hourly_activity(period)?;
@@ -118,27 +117,10 @@ fn period_label(period: StatsPeriod) -> &'static str {
     }
 }
 
-fn print_entries(styler: &Styler, title: &str, entries: &[StatEntry]) {
-    println!();
-    println!("{}", styler.section_title(title));
-    if entries.is_empty() {
-        println!("  {}", styler.muted("-"));
-        return;
-    }
-
-    for entry in entries {
-        let count = if entry.count > 0 {
-            styler.accent(entry.count.to_string())
-        } else {
-            styler.muted(entry.count.to_string())
-        };
-        println!("  {count:>6}  {}", entry.label);
-    }
-}
-
 fn print_heatmap(styler: &Styler, entries: &[StatEntry]) {
     println!();
     println!("{}", styler.section_title("Hourly activity"));
+    println!("{}", styler.muted("hour  count  activity"));
     let max_count = entries.iter().map(|entry| entry.count).max().unwrap_or(0);
     for hour in 0..24 {
         let label = format!("{hour:02}");

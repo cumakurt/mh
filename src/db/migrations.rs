@@ -203,7 +203,7 @@ mod tests {
 
     #[test]
     fn enterprise_migration_is_idempotent() {
-        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let path = temp_dir.path().join("history.db");
         let database = Database::open_path(path).expect("open");
 
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn dedupe_lookup_index_exists_after_migration() {
-        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let database =
             Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 

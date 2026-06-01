@@ -97,7 +97,7 @@ fn daemon_rejects_world_writable_socket_parent() {
     let _guard = ENV_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let parent = temp_dir.path().join("unsafe-socket-parent");
     std::fs::create_dir_all(&parent).expect("parent dir");
     std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777))
@@ -129,7 +129,7 @@ fn daemon_refuses_to_replace_non_socket_path() {
     let _guard = ENV_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     std::fs::set_permissions(temp_dir.path(), std::fs::Permissions::from_mode(0o700))
         .expect("chmod temp dir");
     let socket_path = temp_dir.path().join("record.sock");
@@ -162,7 +162,7 @@ fn daemon_record_roundtrip_respects_security_masking() {
     let _guard = ENV_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let socket_path = temp_dir.path().join("record.sock");
     // SAFETY: test-local environment overrides.
     unsafe {

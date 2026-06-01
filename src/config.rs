@@ -636,6 +636,13 @@ pub fn restrict_directory_permissions(path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Creates a private temporary directory for tests and benchmarks (mode 0700 on Unix).
+pub fn private_tempdir() -> Result<tempfile::TempDir> {
+    let dir = tempfile::tempdir().context("failed to create temporary directory")?;
+    restrict_directory_permissions(dir.path())?;
+    Ok(dir)
+}
+
 /// Creates a directory and applies owner-only permissions.
 pub fn ensure_private_directory(path: &Path) -> Result<()> {
     if path.as_os_str().is_empty() {
@@ -676,15 +683,26 @@ pub fn ensure_secure_data_directory(path: &Path, label: &str) -> Result<()> {
     }
 }
 
+/// Returns true when group or others can write to the directory (Unix only).
 #[cfg(unix)]
-fn ensure_not_group_or_other_writable(path: &Path, label: &str) -> Result<()> {
+pub fn is_group_or_other_writable(path: &Path) -> Result<bool> {
     use std::os::unix::fs::PermissionsExt;
 
     let mode = fs::metadata(path)
         .with_context(|| format!("failed to read permissions for {}", path.display()))?
         .permissions()
         .mode();
-    if mode & 0o022 != 0 {
+    Ok(mode & 0o022 != 0)
+}
+
+#[cfg(not(unix))]
+pub fn is_group_or_other_writable(_path: &Path) -> Result<bool> {
+    Ok(false)
+}
+
+#[cfg(unix)]
+fn ensure_not_group_or_other_writable(path: &Path, label: &str) -> Result<()> {
+    if is_group_or_other_writable(path)? {
         anyhow::bail!(
             "{label} directory {} is writable by group or others; choose a private directory",
             path.display()
@@ -959,7 +977,7 @@ mod tests {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let original_xdg = std::env::var("XDG_CONFIG_HOME").ok();
-        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let temp_dir = private_tempdir().expect("temp dir");
         unsafe {
             std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
         }
@@ -997,7 +1015,7 @@ mod tests {
 
     #[test]
     fn writes_config_with_restrictive_permissions() {
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = private_tempdir().expect("temp dir");
         let path = temp_dir.path().join("config.toml");
         AppConfig::default()
             .write_to_path(&path)
@@ -1019,7 +1037,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn write_private_file_rejects_symlink_destination() {
-        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let temp_dir = private_tempdir().expect("temp dir");
         let target = temp_dir.path().join("target.json");
         let link = temp_dir.path().join("link.json");
         std::os::unix::fs::symlink(&target, &link).expect("symlink");
@@ -1036,7 +1054,7 @@ mod tests {
     fn write_private_file_does_not_chmod_existing_parent_directory() {
         use std::os::unix::fs::PermissionsExt;
 
-        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let temp_dir = private_tempdir().expect("temp dir");
         let parent = temp_dir.path().join("exports");
         std::fs::create_dir_all(&parent).expect("parent dir");
         std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755))
@@ -1081,7 +1099,7 @@ mod tests {
     fn secure_data_directory_does_not_chmod_existing_private_parent() {
         use std::os::unix::fs::PermissionsExt;
 
-        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let temp_dir = private_tempdir().expect("temp dir");
         let parent = temp_dir.path().join("existing");
         std::fs::create_dir_all(&parent).expect("parent dir");
         std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755))
@@ -1102,7 +1120,7 @@ mod tests {
     fn secure_data_directory_rejects_world_writable_parent() {
         use std::os::unix::fs::PermissionsExt;
 
-        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let temp_dir = private_tempdir().expect("temp dir");
         let parent = temp_dir.path().join("unsafe");
         std::fs::create_dir_all(&parent).expect("parent dir");
         std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777))
@@ -1111,5 +1129,23 @@ mod tests {
         let error = ensure_secure_data_directory(&parent, "database parent")
             .expect_err("world-writable parent should fail");
         assert!(format!("{error:#}").contains("writable by group or others"));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn is_group_or_other_writable_detects_insecure_modes() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = private_tempdir().expect("temp dir");
+        let parent = temp_dir.path().join("modes");
+        std::fs::create_dir_all(&parent).expect("parent dir");
+
+        std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o700))
+            .expect("chmod parent");
+        assert!(!is_group_or_other_writable(&parent).expect("inspect"));
+
+        std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777))
+            .expect("chmod parent");
+        assert!(is_group_or_other_writable(&parent).expect("inspect"));
     }
 }

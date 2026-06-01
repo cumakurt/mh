@@ -17,7 +17,7 @@ fn opens_database_from_mh_db_override() {
     ]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let db_path = temp_dir.path().join("override.db");
     unsafe {
         std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());
@@ -61,7 +61,7 @@ fn rejects_foreign_sqlite_without_mh_schema() {
     let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG_NO_CACHE"]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let db_path = temp_dir.path().join("foreign.db");
 
     let connection = rusqlite::Connection::open(&db_path).expect("create sqlite");
@@ -90,7 +90,7 @@ fn record_sets_ssh_flag_from_env() {
     ]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     _guard.use_isolated_config(&temp_dir);
     let mut config = AppConfig::load().expect("load config");
     config.database.path = temp_dir
@@ -160,7 +160,7 @@ fn rejects_invalid_config_toml() {
     let _guard = EnvGuard::save(&["MH_CONFIG", "MH_CONFIG_NO_CACHE"]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let config_path = temp_dir.path().join("config.toml");
     std::fs::write(&config_path, "history = not-a-table").expect("write config");
 
@@ -177,7 +177,7 @@ fn open_fails_on_corrupt_database_file() {
     let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG_NO_CACHE"]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let db_path = temp_dir.path().join("history.db");
     std::fs::write(&db_path, b"not-a-sqlite-database").expect("write corrupt db");
 
@@ -190,7 +190,7 @@ fn open_creates_missing_database_directory() {
     let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG_NO_CACHE"]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let db_path = temp_dir.path().join("nested").join("history.db");
 
     let mut config = AppConfig::default();
@@ -210,7 +210,7 @@ fn record_pipeline_policy_deny_does_not_error() {
     ]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     _guard.use_isolated_config(&temp_dir);
     let mut config = AppConfig::load().expect("load config");
     config.database.path = temp_dir
@@ -273,7 +273,7 @@ fn rejects_mh_db_directory_path() {
     let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG_NO_CACHE"]);
     _guard.clear_mh_env();
 
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     unsafe {
         std::env::set_var("MH_DB", temp_dir.path().to_string_lossy().to_string());
     }
@@ -305,7 +305,7 @@ fn rejects_unwritable_database_directory() {
         let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG_NO_CACHE"]);
         _guard.clear_mh_env();
 
-        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let temp_dir = mh::config::private_tempdir().expect("temp dir");
         let db_dir = temp_dir.path().join("readonly");
         std::fs::create_dir_all(&db_dir).expect("dir");
         let mut perms = std::fs::metadata(&db_dir).expect("metadata").permissions();
@@ -352,7 +352,7 @@ fn map_sqlite_error_maps_busy_to_database_locked() {
 
 #[test]
 fn database_open_refuses_symlink_path() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let real_db = temp_dir.path().join("real.db");
     std::fs::write(&real_db, b"").expect("real db placeholder");
     let link = temp_dir.path().join("history.db");

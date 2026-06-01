@@ -4,10 +4,8 @@ use crate::cli::TimelineArgs;
 use crate::config::AppConfig;
 use crate::db::Database;
 use crate::output::styling::Styler;
+use crate::output::table_format::{header_cell, new_table, print_section};
 use crate::risk;
-use comfy_table::Table;
-
-const TIMELINE_TABLE_STYLE: &str = "││──╞─╪╡│    ┬┴┌┐└┘";
 
 pub fn run(args: TimelineArgs) -> Result<()> {
     let config = AppConfig::load()?;
@@ -59,13 +57,22 @@ pub fn run(args: TimelineArgs) -> Result<()> {
         ]);
     }
 
-    let mut table = Table::new();
-    table.load_preset(TIMELINE_TABLE_STYLE);
-    table.set_header(vec!["ID", "Time", "Command", "Env", "Risk", "Exit"]);
+    let mut table = new_table();
+    table.set_header(vec![
+        header_cell(&styler, "ID"),
+        header_cell(&styler, "Time"),
+        header_cell(&styler, "Command"),
+        header_cell(&styler, "Env"),
+        header_cell(&styler, "Risk"),
+        header_cell(&styler, "Exit"),
+    ]);
     for row in rows {
         table.add_row(row);
     }
-    println!("Session timeline: {}", args.session);
-    println!("{table}");
+    print_section(
+        &styler,
+        &format!("Session timeline · {}", args.session),
+        &table,
+    );
     Ok(())
 }

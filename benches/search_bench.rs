@@ -44,7 +44,7 @@ fn empty_filters() -> SearchFilters {
 
 fn main() {
     let size = bench_size();
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()

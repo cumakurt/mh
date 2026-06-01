@@ -40,7 +40,7 @@ fn parses_context_history_command() {
 
 #[test]
 fn detects_git_context_in_repository() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let repo_path = temp_dir.path();
 
     for (command, args) in [

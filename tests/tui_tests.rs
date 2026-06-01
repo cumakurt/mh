@@ -16,7 +16,7 @@ fn parses_tui_command() {
 
 #[test]
 fn table_fallback_renders_rows_without_terminal() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()

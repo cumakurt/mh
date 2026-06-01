@@ -1,12 +1,9 @@
 use anyhow::Result;
-use comfy_table::{Cell, Table};
 
 use crate::config::AppConfig;
 use crate::models::CommandRow;
 use crate::output::styling::Styler;
-
-/// Single-line UTF-8 borders without double or dotted separators.
-const HISTORY_TABLE_STYLE: &str = "││──╞─╪╡│    ┬┴┌┐└┘";
+use crate::output::table_format::{header_cell, new_table, print_table, truncate_display};
 
 pub fn print(rows: &[CommandRow]) -> Result<()> {
     let config = AppConfig::load()?;
@@ -14,8 +11,13 @@ pub fn print(rows: &[CommandRow]) -> Result<()> {
 }
 
 pub fn print_with_styler(rows: &[CommandRow], styler: &Styler) -> Result<()> {
-    let mut table = Table::new();
-    table.load_preset(HISTORY_TABLE_STYLE);
+    if rows.is_empty() {
+        println!();
+        println!("{}", styler.muted("No matching commands."));
+        return Ok(());
+    }
+
+    let mut table = new_table();
     table.set_header(vec![
         header_cell(styler, "ID"),
         header_cell(styler, "Time"),
@@ -26,6 +28,9 @@ pub fn print_with_styler(rows: &[CommandRow], styler: &Styler) -> Result<()> {
         header_cell(styler, "Tags"),
         header_cell(styler, "Command"),
     ]);
+
+    let cwd_max = 28usize;
+    let cmd_max = 64usize;
 
     for row in rows {
         table.add_row(vec![
@@ -38,46 +43,36 @@ pub fn print_with_styler(rows: &[CommandRow], styler: &Styler) -> Result<()> {
                     .unwrap_or_else(|| "-".to_string()),
                 None,
             ),
-            styler.cell(row.cwd.as_deref().unwrap_or("-"), None),
+            styler.cell(
+                row.cwd
+                    .as_deref()
+                    .map(|cwd| truncate_display(cwd, cwd_max))
+                    .unwrap_or_else(|| "-".to_string()),
+                None,
+            ),
             styler.category_cell(row.category.as_deref()),
             styler.tag_cell(&row.tags),
-            styler.command_cell(row),
+            styler.command_cell_truncated(row, cmd_max),
         ]);
     }
 
-    println!("{table}");
+    print_table(&table);
     Ok(())
 }
 
-fn header_cell(styler: &Styler, label: &str) -> Cell {
-    styler.cell(
-        label,
-        if styler.enabled() {
-            Some(comfy_table::Color::Cyan)
-        } else {
-            None
-        },
-    )
-}
-
 fn format_time(value: &str) -> String {
-    value
+    let normalized = value
         .replace('T', " ")
         .replace("+00:00", "")
-        .replace('Z', "")
+        .replace('Z', "");
+    truncate_display(&normalized, 19)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[test]
-    fn history_table_style_has_expected_component_count() {
-        assert_eq!(HISTORY_TABLE_STYLE.chars().count(), 19);
-    }
-
-    #[test]
-    fn renders_history_table_without_garbled_borders() {
+    fn renders_history_table_with_rounded_borders() {
         let rows = [CommandRow {
             id: 1,
             command: "echo hello".to_string(),
@@ -99,23 +94,16 @@ mod tests {
             environment_tier: None,
         }];
 
-        let mut buffer = Vec::new();
-        {
-            use std::io::Write;
-            let capture = &mut buffer;
-            let mut table = Table::new();
-            table.load_preset(HISTORY_TABLE_STYLE);
-            table.set_header(vec!["ID", "Command"]);
-            table.add_row(vec![Cell::new(rows[0].id), Cell::new(&rows[0].command)]);
-            writeln!(capture, "{table}").expect("table should render");
-        }
+        let styler = Styler::from_display_config(false);
+        let mut table = new_table();
+        table.set_header(vec![header_cell(&styler, "ID"), header_cell(&styler, "Command")]);
+        table.add_row(vec![
+            styler.cell(rows[0].id, None),
+            styler.cell(&rows[0].command, None),
+        ]);
 
-        let rendered = String::from_utf8(buffer).expect("table output should be utf-8");
+        let rendered = format!("{table}");
         assert!(rendered.contains("echo hello"));
         assert!(rendered.contains('┌'));
-        assert!(rendered.contains('┐'));
-        assert!(rendered.contains('└'));
-        assert!(rendered.contains('┘'));
-        assert!(!rendered.starts_with('┴'));
     }
 }

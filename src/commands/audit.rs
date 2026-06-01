@@ -60,11 +60,17 @@ pub fn run(args: AuditArgs) -> Result<()> {
             println!("{}", serde_json::to_string_pretty(&display_rows)?)
         }
         crate::cli::AuditFormat::Table => {
-            use comfy_table::{Table, presets::UTF8_FULL};
+            use crate::output::table_format::{header_cell, new_table, print_section};
 
-            let mut table = Table::new();
-            table.load_preset(UTF8_FULL);
-            table.set_header(vec!["ID", "Time", "Type", "Reason", "Command", "Hash"]);
+            let mut table = new_table();
+            table.set_header(vec![
+                header_cell(&styler, "ID"),
+                header_cell(&styler, "Time"),
+                header_cell(&styler, "Type"),
+                header_cell(&styler, "Reason"),
+                header_cell(&styler, "Command"),
+                header_cell(&styler, "Hash"),
+            ]);
             for row in display_rows {
                 table.add_row(vec![
                     styler.cell(row.id, None),
@@ -80,7 +86,7 @@ pub fn run(args: AuditArgs) -> Result<()> {
                     ),
                 ]);
             }
-            println!("{table}");
+            print_section(&styler, "Audit log", &table);
         }
     }
 
@@ -94,7 +100,7 @@ mod tests {
 
     #[test]
     fn audit_chain_verifies_after_inserts() {
-        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let mut config = AppConfig::default();
         config.database.path = temp_dir
             .path()

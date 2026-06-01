@@ -1,8 +1,6 @@
 use std::fs;
 use std::sync::{LazyLock, Mutex};
 
-use tempfile::tempdir;
-
 static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 #[test]
@@ -10,7 +8,7 @@ fn install_systemd_unit_writes_execstart() {
     let _guard = ENV_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let home = tempdir().expect("tempdir");
+    let home = mh::config::private_tempdir().expect("temp dir");
     let previous_home = std::env::var("HOME").ok();
     unsafe {
         std::env::set_var("HOME", home.path());
@@ -55,7 +53,7 @@ fn install_systemd_unit_rejects_symlink_destination() {
     let _guard = ENV_LOCK
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let home = tempdir().expect("tempdir");
+    let home = mh::config::private_tempdir().expect("temp dir");
     let previous_home = std::env::var("HOME").ok();
     unsafe {
         std::env::set_var("HOME", home.path());

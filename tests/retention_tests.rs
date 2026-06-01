@@ -4,7 +4,7 @@ use mh::models::CommandRecord;
 
 #[test]
 fn maybe_enforce_skips_count_when_not_due() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -26,7 +26,7 @@ fn maybe_enforce_skips_count_when_not_due() {
 
 #[test]
 fn maybe_enforce_runs_when_near_limit() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -49,7 +49,7 @@ fn maybe_enforce_runs_when_near_limit() {
 
 #[test]
 fn retention_purge_deletes_old_rows_without_legal_hold() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()

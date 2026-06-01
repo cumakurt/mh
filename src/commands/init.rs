@@ -267,7 +267,7 @@ mod tests {
 
     #[test]
     fn install_targets_existing_bash_profile() {
-        let home = tempfile::tempdir().expect("tempdir");
+        let home = crate::config::private_tempdir().expect("temp dir");
         let profile = home.path().join(".bash_profile");
         std::fs::write(&profile, "# login shell\n").expect("write");
         let resolved = crate::shell::resolve_config_path(ShellKind::Bash, home.path());

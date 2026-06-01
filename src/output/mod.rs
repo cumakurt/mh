@@ -3,6 +3,8 @@ pub mod json;
 pub mod markdown;
 pub mod styling;
 pub mod table;
+pub mod table_format;
+pub mod tui_theme;
 
 use anyhow::Result;
 

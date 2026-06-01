@@ -2,7 +2,7 @@ use mh::db::{Database, EXPECTED_SCHEMA_VERSION};
 
 #[test]
 fn applies_all_schema_migrations() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -15,7 +15,7 @@ fn applies_all_schema_migrations() {
 
 #[test]
 fn enterprise_migration_columns_are_idempotent() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let path = temp_dir.path().join("history.db");
     let database = Database::open_path(path.clone()).expect("database should open");
 
@@ -37,7 +37,7 @@ fn enterprise_migration_columns_are_idempotent() {
 fn open_rejects_database_with_newer_schema() {
     use mh::errors::MhError;
 
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let path = temp_dir.path().join("history.db");
     Database::open_path(path.clone()).expect("initialize database");
     let connection = rusqlite::Connection::open(&path).expect("reopen");

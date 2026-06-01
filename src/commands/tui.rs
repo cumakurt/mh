@@ -11,15 +11,20 @@ use fuzzy_matcher::skim::SkimMatcherV2;
 use ratatui::Terminal;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wrap};
+use ratatui::widgets::{List, ListItem, ListState, Paragraph, Wrap};
 
 use crate::cli::TuiArgs;
 use crate::config::AppConfig;
 use crate::db::Database;
 use crate::models::{CommandRow, SearchFilters, StatEntry, StatsPeriod, StatsSummary};
 use crate::output;
+use crate::output::table_format::truncate_display;
+use crate::output::tui_theme::{
+    self, footer_style, highlight_style, panel_block, risk_line, screen_margin, stat_line,
+    title_line, ACCENT, MUTED, SUCCESS, WARNING,
+};
 use crate::risk::{self, RiskLevel};
 
 pub fn run(args: TuiArgs) -> Result<()> {
@@ -528,131 +533,206 @@ impl TuiApp {
 }
 
 fn draw(frame: &mut ratatui::Frame<'_>, app: &mut TuiApp) {
+    let area = frame.area().inner(screen_margin());
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),
             Constraint::Min(8),
-            Constraint::Length(3),
+            Constraint::Length(4),
         ])
-        .split(frame.area());
+        .split(area);
 
     let search_text = match app.mode {
-        TuiMode::Normal => format!("Filter: {}", app.filter),
-        TuiMode::TagInput => format!("Tag: {}", app.tag_input),
-        TuiMode::DeleteConfirm => {
-            "Confirm delete with y or Enter, cancel with n or Esc".to_string()
-        }
+        TuiMode::Normal => format!("  {}", app.filter),
+        TuiMode::TagInput => format!("  tag: {}", app.tag_input),
+        TuiMode::DeleteConfirm => "  Confirm delete — y/Enter yes · n/Esc cancel".to_string(),
     };
-    let search =
-        Paragraph::new(search_text).block(Block::default().title("mh tui").borders(Borders::ALL));
+    let mode_hint = match app.mode {
+        TuiMode::Normal => "filter",
+        TuiMode::TagInput => "tag",
+        TuiMode::DeleteConfirm => "confirm",
+    };
+    let search = Paragraph::new(search_text).block(panel_block(title_line(&format!(
+        "mh · {mode_hint}"
+    ))));
     frame.render_widget(search, chunks[0]);
 
     let body = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(62), Constraint::Percentage(38)])
+        .constraints([Constraint::Percentage(58), Constraint::Percentage(42)])
+        .margin(1)
         .split(chunks[1]);
 
+    let list_width = body[0].width.saturating_sub(14) as usize;
     let items = app
         .visible
         .iter()
-        .map(|index| list_item(&app.rows[*index]))
+        .map(|index| list_item(&app.rows[*index], list_width))
         .collect::<Vec<_>>();
     let list = List::new(items)
-        .block(Block::default().title("History").borders(Borders::ALL))
-        .highlight_style(
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
-        )
-        .highlight_symbol("> ");
+        .block(panel_block(title_line(&format!(
+            "History ({})",
+            app.visible.len()
+        ))))
+        .highlight_style(highlight_style())
+        .highlight_symbol("▸ ");
     frame.render_stateful_widget(list, body[0], &mut app.state);
 
     let detail = Paragraph::new(detail_text(app.selected_row()))
-        .block(Block::default().title("Details").borders(Borders::ALL))
-        .wrap(Wrap { trim: false });
+        .block(panel_block(title_line("Details")))
+        .wrap(Wrap { trim: true });
     frame.render_widget(detail, body[1]);
 
-    let footer = Paragraph::new(format!(
-        "Up/Down move  Enter print  Ctrl-C copy  p pin  t tag  d delete  q/Esc exit\n{}",
-        app.message
-    ))
-    .block(Block::default().borders(Borders::ALL));
+    let footer = Paragraph::new(Line::from(vec![
+        Span::styled(
+            "↑↓ move · Enter run · Ctrl-C copy · p pin · t tag · d delete · q quit",
+            footer_style(),
+        ),
+        Span::raw("\n"),
+        Span::styled(&app.message, Style::default().fg(ACCENT)),
+    ]))
+    .block(panel_block(title_line("Controls")));
     frame.render_widget(footer, chunks[2]);
 }
 
 fn draw_dashboard(frame: &mut ratatui::Frame<'_>, data: &DashboardData) {
+    let area = frame.area().inner(screen_margin());
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(7),
-            Constraint::Min(8),
+            Constraint::Length(8),
+            Constraint::Min(10),
             Constraint::Length(3),
         ])
-        .split(frame.area());
+        .split(area);
 
     let error_rate = if data.summary.total_commands == 0 {
         0.0
     } else {
         (data.summary.failed_commands as f64 / data.summary.total_commands as f64) * 100.0
     };
-    let header = Paragraph::new(format!(
-        "Total: {}\nSuccess: {}\nFailed: {}\nError rate: {:.1}%\nPeak hour: {}",
-        data.summary.total_commands,
-        data.summary.successful_commands,
-        data.summary.failed_commands,
-        error_rate,
-        data.summary.peak_hour.as_deref().unwrap_or("-")
-    ))
-    .block(Block::default().title("mh dashboard").borders(Borders::ALL));
+    let header = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled("Total ", Style::default().fg(MUTED)),
+            Span::styled(
+                data.summary.total_commands.to_string(),
+                Style::default()
+                    .fg(ACCENT)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("   "),
+            Span::styled("OK ", Style::default().fg(MUTED)),
+            Span::styled(
+                data.summary.successful_commands.to_string(),
+                Style::default().fg(SUCCESS),
+            ),
+            Span::raw("   "),
+            Span::styled("Failed ", Style::default().fg(MUTED)),
+            Span::styled(
+                data.summary.failed_commands.to_string(),
+                Style::default().fg(if data.summary.failed_commands > 0 {
+                    WARNING
+                } else {
+                    MUTED
+                }),
+            ),
+        ]),
+        Line::from(vec![
+            Span::styled("Error rate ", Style::default().fg(MUTED)),
+            Span::styled(
+                format!("{error_rate:.1}%"),
+                Style::default().fg(if error_rate >= 20.0 {
+                    tui_theme::DANGER
+                } else if error_rate > 0.0 {
+                    WARNING
+                } else {
+                    SUCCESS
+                }),
+            ),
+            Span::raw("   "),
+            Span::styled("Peak hour ", Style::default().fg(MUTED)),
+            Span::raw(data.summary.peak_hour.as_deref().unwrap_or("-")),
+        ]),
+    ])
+    .block(panel_block(title_line("mh dashboard")));
     frame.render_widget(header, chunks[0]);
 
-    let body = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(34),
-            Constraint::Percentage(33),
-            Constraint::Percentage(33),
-        ])
-        .split(chunks[1]);
+    if area.width >= 100 {
+        let body = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage(34),
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+            ])
+            .margin(1)
+            .split(chunks[1]);
 
-    frame.render_widget(
-        dashboard_stat_list("Top commands", &data.summary.top_commands),
-        body[0],
-    );
-    frame.render_widget(dashboard_risk_list(&data.risky), body[1]);
-    frame.render_widget(
-        dashboard_stat_list("Environments", &data.environments),
-        body[2],
-    );
+        let label_width = body[0].width.saturating_sub(8);
+        frame.render_widget(
+            dashboard_stat_list("Top commands", &data.summary.top_commands, label_width),
+            body[0],
+        );
+        frame.render_widget(
+            dashboard_risk_list(&data.risky, body[1].width.saturating_sub(16) as usize),
+            body[1],
+        );
+        frame.render_widget(
+            dashboard_stat_list("Environments", &data.environments, label_width),
+            body[2],
+        );
+    } else {
+        let body = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage(34),
+                Constraint::Percentage(33),
+                Constraint::Percentage(33),
+            ])
+            .margin(1)
+            .split(chunks[1]);
 
-    let footer = Paragraph::new("q/Esc exit")
-        .block(Block::default().title("Controls").borders(Borders::ALL));
+        let label_width = area.width.saturating_sub(12);
+        frame.render_widget(
+            dashboard_stat_list("Top commands", &data.summary.top_commands, label_width),
+            body[0],
+        );
+        frame.render_widget(
+            dashboard_risk_list(&data.risky, area.width.saturating_sub(20) as usize),
+            body[1],
+        );
+        frame.render_widget(
+            dashboard_stat_list("Environments", &data.environments, label_width),
+            body[2],
+        );
+    }
+
+    let footer = Paragraph::new(Span::styled("q or Esc to exit", footer_style()))
+        .block(panel_block(title_line("Controls")));
     frame.render_widget(footer, chunks[2]);
 }
 
-fn dashboard_stat_list(title: &'static str, entries: &[StatEntry]) -> List<'static> {
+fn dashboard_stat_list(title: &'static str, entries: &[StatEntry], label_width: u16) -> List<'static> {
     let items = if entries.is_empty() {
-        vec![ListItem::new(Line::from(vec![Span::raw("-")]))]
+        vec![ListItem::new(Line::from(vec![Span::styled(
+            "No data",
+            Style::default().fg(MUTED),
+        )]))]
     } else {
         entries
             .iter()
-            .map(|entry| {
-                ListItem::new(Line::from(vec![Span::raw(format!(
-                    "{:>5}  {}",
-                    entry.count, entry.label
-                ))]))
-            })
+            .map(|entry| ListItem::new(stat_line(entry.count, &entry.label, label_width)))
             .collect()
     };
-    List::new(items).block(Block::default().title(title).borders(Borders::ALL))
+    List::new(items).block(panel_block(title_line(title)))
 }
 
-fn dashboard_risk_list(rows: &[CommandRow]) -> List<'static> {
+fn dashboard_risk_list(rows: &[CommandRow], command_width: usize) -> List<'static> {
     let items = if rows.is_empty() {
-        vec![ListItem::new(Line::from(vec![Span::raw(
+        vec![ListItem::new(Line::from(vec![Span::styled(
             "No risky recent commands",
+            Style::default().fg(MUTED),
         )]))]
     } else {
         rows.iter()
@@ -660,14 +740,11 @@ fn dashboard_risk_list(rows: &[CommandRow]) -> List<'static> {
                 let level = risk::assess_command(&row.command)
                     .map(|assessment| risk_label(assessment.level))
                     .unwrap_or("-");
-                ListItem::new(Line::from(vec![Span::raw(format!(
-                    "{:<8} {:<5} {}",
-                    level, row.id, row.command
-                ))]))
+                ListItem::new(risk_line(level, row.id, &row.command, command_width))
             })
             .collect()
     };
-    List::new(items).block(Block::default().title("Risk").borders(Borders::ALL))
+    List::new(items).block(panel_block(title_line("Risk")))
 }
 
 fn risk_label(level: RiskLevel) -> &'static str {
@@ -678,23 +755,36 @@ fn risk_label(level: RiskLevel) -> &'static str {
     }
 }
 
-fn list_item(row: &CommandRow) -> ListItem<'static> {
+fn list_item(row: &CommandRow, command_width: usize) -> ListItem<'static> {
     let exit = row
         .exit_code
         .map(|value| value.to_string())
         .unwrap_or_else(|| "-".to_string());
-    let pin = if row.is_pinned { "*" } else { " " };
-    let line = format!("{pin} {:<5} {:<4} {}", row.id, exit, row.command);
-    ListItem::new(Line::from(vec![Span::raw(line)]))
+    let exit_style = match row.exit_code {
+        Some(0) => Style::default().fg(SUCCESS),
+        Some(_) => Style::default().fg(tui_theme::DANGER),
+        None => Style::default().fg(MUTED),
+    };
+    let pin = if row.is_pinned {
+        Span::styled("◆ ", Style::default().fg(ACCENT))
+    } else {
+        Span::raw("  ")
+    };
+    ListItem::new(Line::from(vec![
+        pin,
+        Span::styled(format!("{:<5} ", row.id), Style::default().fg(MUTED)),
+        Span::styled(format!("{exit:<4} "), exit_style),
+        Span::raw(truncate_display(&row.command, command_width)),
+    ]))
 }
 
 fn detail_text(row: Option<&CommandRow>) -> String {
     let Some(row) = row else {
-        return "No command selected".to_string();
+        return "Select a command from the list.".to_string();
     };
 
     format!(
-        "ID: {}\nPinned: {}\nMasked: {}\nTime: {}\nExit: {}\nDuration: {}\nShell: {}\nCWD: {}\nCategory: {}\nTags: {}\n\n{}",
+        "ID        {}\nPinned    {}\nMasked    {}\nTime      {}\nExit      {}\nDuration  {}\nShell     {}\nCWD       {}\nCategory  {}\nTags      {}\n\n{}",
         row.id,
         row.is_pinned,
         row.is_masked,
@@ -703,7 +793,7 @@ fn detail_text(row: Option<&CommandRow>) -> String {
             .map(|value| value.to_string())
             .unwrap_or_else(|| "-".to_string()),
         row.duration_ms
-            .map(|value| format!("{value}ms"))
+            .map(|value| format!("{value} ms"))
             .unwrap_or_else(|| "-".to_string()),
         row.shell.as_deref().unwrap_or("-"),
         row.cwd.as_deref().unwrap_or("-"),
@@ -711,7 +801,7 @@ fn detail_text(row: Option<&CommandRow>) -> String {
         if row.tags.is_empty() {
             "-".to_string()
         } else {
-            row.tags.join(",")
+            row.tags.join(", ")
         },
         row.command
     )
@@ -817,7 +907,7 @@ mod tests {
         let mut masked = row("mysql -p****");
         masked.is_masked = true;
         let text = detail_text(Some(&masked));
-        assert!(text.contains("Masked: true"));
+        assert!(text.contains("Masked    true"));
         assert!(text.contains("mysql"));
     }
 

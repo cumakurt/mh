@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn verify_schema_version_rejects_outdated_version() {
-        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let database =
             Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
         database

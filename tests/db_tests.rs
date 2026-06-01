@@ -4,7 +4,7 @@ use mh::models::{CommandRecord, SearchFilters, StatsPeriod};
 
 #[test]
 fn inserts_and_searches_commands() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -75,7 +75,7 @@ fn inserts_and_searches_commands() {
 
 #[test]
 fn searches_with_fuzzy_and_fts_modes() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -157,7 +157,7 @@ fn searches_with_fuzzy_and_fts_modes() {
 
 #[test]
 fn detects_recent_duplicates() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -200,7 +200,7 @@ fn detects_recent_duplicates() {
 
 #[test]
 fn tags_and_pins_filter_results() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -308,7 +308,7 @@ fn tags_and_pins_filter_results() {
 
 #[test]
 fn summarizes_command_statistics() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -359,7 +359,7 @@ fn summarizes_command_statistics() {
 
 #[test]
 fn deletes_commands_and_clears_history() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -389,7 +389,7 @@ fn deletes_commands_and_clears_history() {
 
 #[test]
 fn clear_history_allows_new_commands_to_be_stored_and_listed() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -441,7 +441,7 @@ fn clear_history_allows_new_commands_to_be_stored_and_listed() {
 
 #[test]
 fn stores_audit_rows_and_snippets() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -490,7 +490,7 @@ fn stores_audit_rows_and_snippets() {
 
 #[test]
 fn enforces_max_entries_and_keeps_pinned_records() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -553,7 +553,7 @@ fn enforces_max_entries_and_keeps_pinned_records() {
 
 #[test]
 fn filters_by_hostname_ssh_and_root_flags() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -674,7 +674,7 @@ fn filters_by_hostname_ssh_and_root_flags() {
 
 #[test]
 fn filters_by_git_context() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -789,7 +789,7 @@ fn base_filters() -> SearchFilters {
 
 #[test]
 fn literal_search_escapes_like_wildcards() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
     database
@@ -808,7 +808,7 @@ fn literal_search_escapes_like_wildcards() {
 
 #[test]
 fn cwd_filter_escapes_like_wildcards() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
     let mut with_underscore = sample_record("ls", Some(0), None, None);
@@ -831,7 +831,7 @@ fn cwd_filter_escapes_like_wildcards() {
 
 #[test]
 fn fts_search_with_only_operators_returns_empty_result() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
     database
@@ -847,7 +847,7 @@ fn fts_search_with_only_operators_returns_empty_result() {
 
 #[test]
 fn search_rejects_invalid_date_bounds() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -861,7 +861,7 @@ fn search_rejects_invalid_date_bounds() {
 
 #[test]
 fn round_trips_environment_tier_on_command_rows() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 
@@ -900,7 +900,7 @@ fn round_trips_environment_tier_on_command_rows() {
 
 #[test]
 fn enables_wal_mode_and_restrictive_permissions() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let db_path = temp_dir.path().join("history.db");
     Database::open_path(db_path.clone()).expect("database should open");
 
@@ -930,7 +930,7 @@ fn enables_wal_mode_and_restrictive_permissions() {
 fn opening_database_does_not_chmod_existing_parent_directory() {
     use std::os::unix::fs::PermissionsExt;
 
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let parent = temp_dir.path().join("db-parent");
     std::fs::create_dir_all(&parent).expect("parent dir");
     std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755))
@@ -951,7 +951,7 @@ fn opening_database_does_not_chmod_existing_parent_directory() {
 fn opening_database_rejects_world_writable_parent_directory() {
     use std::os::unix::fs::PermissionsExt;
 
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let parent = temp_dir.path().join("unsafe-db-parent");
     std::fs::create_dir_all(&parent).expect("parent dir");
     std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777))
@@ -968,7 +968,7 @@ fn opening_database_rejects_world_writable_parent_directory() {
 fn exceeds_size_limit_reflects_file_size_on_disk() {
     use std::io::Write;
 
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let path = temp_dir.path().join("history.db");
     let database = Database::open_path(path.clone()).expect("database should open");
 
@@ -987,7 +987,7 @@ fn exceeds_size_limit_reflects_file_size_on_disk() {
 
 #[test]
 fn fuzzy_search_prefilters_with_like_before_scoring() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 

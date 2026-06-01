@@ -5,7 +5,7 @@ use mh::db::Database;
 use mh::record_pipeline::{RecordOptions, RecordPayload, execute_with_options};
 
 fn main() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()

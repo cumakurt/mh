@@ -1,6 +1,5 @@
 use anyhow::{Result, bail};
 use chrono::{Local, TimeZone};
-use comfy_table::{Table, presets::UTF8_FULL};
 use serde::Serialize;
 
 use crate::cli::{RiskArgs, RiskCommand, RiskScanArgs};
@@ -8,6 +7,7 @@ use crate::config::AppConfig;
 use crate::db::Database;
 use crate::models::SearchFilters;
 use crate::output::styling::Styler;
+use crate::output::table_format::{header_cell, new_table, print_section};
 use crate::risk::{self, RiskAssessment, RiskLevel, is_at_least};
 
 #[derive(Debug, Serialize)]
@@ -31,9 +31,12 @@ pub fn run(args: RiskArgs) -> Result<()> {
 fn list_rules() -> Result<()> {
     let config = AppConfig::load()?;
     let styler = Styler::from_config(&config);
-    let mut table = Table::new();
-    table.load_preset(UTF8_FULL);
-    table.set_header(vec!["ID", "Level", "Description"]);
+    let mut table = new_table();
+    table.set_header(vec![
+        header_cell(&styler, "ID"),
+        header_cell(&styler, "Level"),
+        header_cell(&styler, "Description"),
+    ]);
 
     for rule in risk::list_rules() {
         table.add_row(vec![
@@ -43,7 +46,7 @@ fn list_rules() -> Result<()> {
         ]);
     }
 
-    println!("{table}");
+    print_section(&styler, "Risk rules", &table);
     Ok(())
 }
 
@@ -146,9 +149,14 @@ fn scan_history(args: RiskScanArgs) -> Result<()> {
         return Ok(());
     }
 
-    let mut table = Table::new();
-    table.load_preset(UTF8_FULL);
-    table.set_header(vec!["ID", "Level", "Time", "Rule", "Command"]);
+    let mut table = new_table();
+    table.set_header(vec![
+        header_cell(&styler, "ID"),
+        header_cell(&styler, "Level"),
+        header_cell(&styler, "Time"),
+        header_cell(&styler, "Rule"),
+        header_cell(&styler, "Command"),
+    ]);
 
     for row in matches {
         table.add_row(vec![
@@ -156,11 +164,18 @@ fn scan_history(args: RiskScanArgs) -> Result<()> {
             styler.risk_level_cell(row.level),
             styler.cell(row.started_at, None),
             styler.cell(row.rule_id, None),
-            styler.cell(row.command, Some(comfy_table::Color::Red)),
+            styler.cell(
+                row.command,
+                if styler.enabled() {
+                    Some(comfy_table::Color::Red)
+                } else {
+                    None
+                },
+            ),
         ]);
     }
 
-    println!("{table}");
+    print_section(&styler, "Risk scan results", &table);
     Ok(())
 }
 

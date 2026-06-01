@@ -68,9 +68,18 @@ impl Styler {
     pub fn section_title(&self, title: impl AsRef<str>) -> String {
         let title = title.as_ref();
         if !self.enabled {
-            return title.to_string();
+            return format!("== {title} ==");
         }
-        title.bold().underlined().to_string()
+        format!("{}", title.cyan().bold())
+    }
+
+    pub fn separator(&self) -> String {
+        let line = "─".repeat(56);
+        if self.enabled {
+            line.dark_grey().to_string()
+        } else {
+            line
+        }
     }
 
     pub fn accent(&self, text: impl AsRef<str>) -> String {
@@ -175,6 +184,17 @@ impl Styler {
         self.cell(format_command(row), command_color(row))
     }
 
+    pub fn command_cell_truncated(
+        &self,
+        row: &crate::models::CommandRow,
+        max_chars: usize,
+    ) -> Cell {
+        self.cell(
+            truncate_text(&format_command(row), max_chars),
+            command_color(row),
+        )
+    }
+
     pub fn error_rate_text(&self, total: i64, failed: i64) -> String {
         if total == 0 {
             return self.muted("-");
@@ -220,6 +240,18 @@ fn command_color(row: &crate::models::CommandRow) -> Option<Color> {
         return Some(Color::Yellow);
     }
     None
+}
+
+fn truncate_text(text: &str, max_chars: usize) -> String {
+    if max_chars == 0 {
+        return String::new();
+    }
+    let char_count = text.chars().count();
+    if char_count <= max_chars {
+        return text.to_string();
+    }
+    let prefix: String = text.chars().take(max_chars.saturating_sub(1)).collect();
+    format!("{prefix}…")
 }
 
 fn format_command(row: &crate::models::CommandRow) -> String {

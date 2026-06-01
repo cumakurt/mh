@@ -5,7 +5,7 @@ use mh::security::{SecurityAction, process_command};
 
 #[test]
 fn import_skips_plaintext_secrets_when_skip_enabled() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -24,7 +24,7 @@ fn import_skips_plaintext_secrets_when_skip_enabled() {
 
 #[test]
 fn import_rejects_invalid_csv_column_count() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let csv_path = temp_dir.path().join("bad.csv");
     std::fs::write(&csv_path, "id,started_at\n1,2026-01-01T00:00:00Z\n").expect("write csv");
 
@@ -44,7 +44,7 @@ fn import_rejects_invalid_csv_column_count() {
 
 #[test]
 fn import_rejects_oversized_file() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let json_path = temp_dir.path().join("huge.json");
     let oversized = vec![b' '; 64 * 1024 * 1024 + 1];
     std::fs::write(&json_path, oversized).expect("write file");
@@ -65,7 +65,7 @@ fn import_rejects_oversized_file() {
 
 #[test]
 fn import_masks_mysql_password() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let json_path = temp_dir.path().join("history.json");
     let payload = r#"[{"id":1,"started_at":"2026-01-01T00:00:00Z","exit_code":0,"duration_ms":1,"cwd":"/tmp","shell":"bash","category":null,"command":"mysql -u root -pSecret123","tags":[],"is_pinned":false,"is_masked":false}]"#;
     std::fs::write(&json_path, payload).expect("write json");

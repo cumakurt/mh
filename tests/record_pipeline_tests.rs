@@ -5,7 +5,7 @@ use mh::record_pipeline::{RecordPayload, execute};
 
 #[test]
 fn pipeline_skips_empty_command() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -41,7 +41,7 @@ fn pipeline_skips_empty_command() {
 
 #[test]
 fn rejects_invalid_started_at_timestamp() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -78,7 +78,7 @@ fn rejects_invalid_started_at_timestamp() {
 
 #[test]
 fn pipeline_masks_mysql_password() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -142,7 +142,7 @@ fn pipeline_masks_mysql_password() {
 
 #[test]
 fn pipeline_returns_policy_denied_for_matching_rule() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -194,7 +194,7 @@ fn pipeline_returns_policy_denied_for_matching_rule() {
 
 #[test]
 fn pipeline_clamps_negative_duration_to_zero() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -241,7 +241,7 @@ fn pipeline_masks_critical_secret_commands_end_to_end() {
     ];
 
     for (index, (command, secret)) in cases.iter().enumerate() {
-        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let temp_dir = mh::config::private_tempdir().expect("temp dir");
         let mut config = AppConfig::default();
         config.database.path = temp_dir
             .path()

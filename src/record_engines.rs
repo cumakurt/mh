@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn returns_same_engine_instance_for_repeated_lookups() {
         invalidate_cache();
-        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let config_dir = temp_dir.path().join("mh");
         std::fs::create_dir_all(&config_dir).expect("config dir");
         let config_path = config_dir.join("config.toml");

@@ -6,11 +6,9 @@ use std::time::Duration;
 
 use mh::daemon::{DaemonRequest, DaemonResponse};
 use mh::record_pipeline::RecordPayload;
-use tempfile::tempdir;
-
 #[test]
 fn daemon_ping_and_record_roundtrip() {
-    let dir = tempdir().expect("tempdir");
+    let dir = mh::config::private_tempdir().expect("temp dir");
     let config_dir = dir.path().join("config");
     fs::create_dir_all(&config_dir).expect("config dir");
     let config_path = config_dir.join("config.toml");

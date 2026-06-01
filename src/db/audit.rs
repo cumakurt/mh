@@ -165,7 +165,7 @@ mod audit_tests {
 
     #[test]
     fn rebuild_audit_chain_seals_legacy_rows() {
-        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let mut config = AppConfig::default();
         config.database.path = temp_dir
             .path()

@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn detects_git_context_in_repository() {
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let repo_path = temp_dir.path();
         init_git_repo(repo_path);
 
@@ -199,7 +199,7 @@ mod tests {
 
     #[test]
     fn is_git_repository_detects_nested_worktree() {
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let repo_path = temp_dir.path();
         init_git_repo(repo_path);
 
@@ -210,13 +210,13 @@ mod tests {
 
     #[test]
     fn is_git_repository_returns_false_outside_repo() {
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         assert!(!is_git_repository(&temp_dir.path().to_string_lossy()));
     }
 
     #[test]
     fn cached_git_context_hits_second_lookup() {
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let repo_path = temp_dir.path();
         init_git_repo(repo_path);
         let cwd = repo_path.to_string_lossy().to_string();

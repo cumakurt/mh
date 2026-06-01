@@ -141,6 +141,7 @@ pub fn run(args: DoctorArgs) -> Result<()> {
     );
 
     check_database_size(&styler, &config, db_path);
+    check_database_parent_permissions(&styler, db_path);
     check_disk_space(&styler, db_path);
     check_write_permission(&styler, db_path);
     check_file_permissions(&styler, &cfg_path, db_path);
@@ -293,6 +294,35 @@ fn check_code(message: &str) -> String {
     let mut hasher = DefaultHasher::new();
     message.hash(&mut hasher);
     format!("check_{:016x}", hasher.finish())
+}
+
+fn check_database_parent_permissions(styler: &Styler, db_path: &Path) {
+    let Some(parent) = db_path.parent().filter(|parent| !parent.as_os_str().is_empty()) else {
+        return;
+    };
+    if !parent.exists() {
+        return;
+    }
+    match crate::config::is_group_or_other_writable(parent) {
+        Ok(true) => say(
+            styler,
+            StatusLevel::Warn,
+            format!(
+                "Database parent directory is writable by group or others: {} — use a private path such as ~/.local/share/mh",
+                parent.display()
+            ),
+        ),
+        Ok(false) => say(
+            styler,
+            StatusLevel::Ok,
+            "Database parent directory permissions are safe",
+        ),
+        Err(error) => say(
+            styler,
+            StatusLevel::Warn,
+            format!("Could not inspect database parent permissions: {error}"),
+        ),
+    }
 }
 
 fn check_database_size(styler: &Styler, config: &AppConfig, db_path: &Path) {
@@ -1180,7 +1210,7 @@ mod tests {
     #[test]
     #[cfg(unix)]
     fn detects_symlink_without_following_target() {
-        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let target = temp_dir.path().join("target.db");
         let link = temp_dir.path().join("history.db");
         std::fs::write(&target, "not sqlite").expect("target");

@@ -37,7 +37,7 @@ fn sample_record(command: &str) -> CommandRecord {
 
 #[test]
 fn duplicate_insert_is_skipped_inside_transaction() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -65,7 +65,7 @@ fn duplicate_insert_is_skipped_inside_transaction() {
 
 #[test]
 fn concurrent_duplicate_inserts_store_single_row() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     let db_path = temp_dir.path().join("history.db");
     config.database.path = db_path.to_string_lossy().to_string();

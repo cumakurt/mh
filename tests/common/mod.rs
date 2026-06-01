@@ -4,9 +4,14 @@
 use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
 
-use mh::config::AppConfig;
+use mh::config::{self, AppConfig};
 
 static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+/// Temporary directory with owner-only permissions for database and daemon tests.
+pub fn private_tempdir() -> tempfile::TempDir {
+    config::private_tempdir().expect("private temp dir should be created")
+}
 
 /// Serializes env mutations and restores `XDG_CONFIG_HOME` / `MH_CONFIG` on drop.
 pub struct IsolatedConfigHome {
@@ -24,7 +29,7 @@ impl IsolatedConfigHome {
         let env_lock = ENV_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = private_tempdir();
         let config_path = temp_dir.path().join("mh").join("config.toml");
         std::fs::create_dir_all(config_path.parent().expect("config parent"))
             .expect("config dir should be created");
@@ -151,7 +156,7 @@ impl IsolatedHome {
         let env_lock = ENV_LOCK
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = private_tempdir();
         let original_home = std::env::var("HOME").ok();
         unsafe {
             std::env::set_var("HOME", temp_dir.path());

@@ -2,7 +2,7 @@ use mh::db::Database;
 
 #[test]
 fn saves_and_loads_snippets_from_database() {
-    let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let database =
         Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
 

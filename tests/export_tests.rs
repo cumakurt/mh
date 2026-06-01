@@ -3,7 +3,7 @@ use mh::db::Database;
 
 #[test]
 fn sqlite_export_without_audit_clears_audit_table() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let export_path = temp_dir.path().join("export.db");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
@@ -32,7 +32,7 @@ fn sqlite_export_without_audit_clears_audit_table() {
 
 #[test]
 fn sanitize_redacts_command_export_rows() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()
@@ -99,7 +99,7 @@ fn sanitize_redacts_command_export_rows() {
 #[test]
 #[cfg(unix)]
 fn export_refuses_symlink_destination() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()

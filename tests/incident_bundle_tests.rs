@@ -4,7 +4,7 @@ use mh::models::CommandRecord;
 
 #[test]
 fn incident_bundle_redacts_and_marks_risk() {
-    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let mut config = AppConfig::default();
     config.database.path = temp_dir
         .path()

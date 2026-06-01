@@ -606,7 +606,7 @@ mod tests {
 
     #[test]
     fn engine_masks_docker_login_password() {
-        let temp_dir = tempfile::tempdir().expect("temp dir should be created");
+        let temp_dir = crate::config::private_tempdir().expect("temp dir");
         let original = std::env::var("XDG_CONFIG_HOME").ok();
         // SAFETY: test runs in isolation and restores the previous config home.
         unsafe {

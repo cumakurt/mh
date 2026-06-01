@@ -5,7 +5,7 @@ use mh::commands::import_history;
 
 #[test]
 fn import_rejects_invalid_csv_timestamp() {
-    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let temp_dir = mh::config::private_tempdir().expect("temp dir");
     let csv_path = temp_dir.path().join("bad.csv");
     let mut file = std::fs::File::create(&csv_path).expect("create csv");
     writeln!(

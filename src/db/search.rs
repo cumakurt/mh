@@ -274,6 +274,10 @@ impl Database {
         self.top_entries("git_branch", &where_sql, &values, limit)
     }
 
+    pub fn distinct_environments(&self, limit: usize) -> Result<Vec<StatEntry>> {
+        self.top_entries("environment_tier", "", &[], limit)
+    }
+
     pub fn delete_command_ids(&self, command_ids: &[i64]) -> Result<usize> {
         if command_ids.is_empty() {
             return Ok(0);

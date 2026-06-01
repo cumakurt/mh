@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="750" height="2832" role="img">
+  <title>mh command output</title>
+  <rect width="100%" height="100%" rx="8" fill="#101418"/>
+  <rect x="0.5" y="0.5" width="749" height="2831" rx="8" fill="none" stroke="#2f3b45"/>
+  <g font-family="JetBrains Mono, Fira Code, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+  <text x="18" y="30" fill="#8fd694">$ mh man | head -n 12</text>
+  <text x="18" y="50" fill="#d8dee9">.ie \n(.g .ds Aq \(aq</text>
+  <text x="18" y="70" fill="#d8dee9">.el .ds Aq &#x27;</text>
+  <text x="18" y="90" fill="#d8dee9">.TH mh 1  &quot;mh 0.1.0&quot; </text>
+  <text x="18" y="110" fill="#d8dee9">.SH NAME</text>
+  <text x="18" y="130" fill="#d8dee9">mh \- A modern command history manager</text>
+  <text x="18" y="150" fill="#d8dee9">.SH SYNOPSIS</text>
+  <text x="18" y="170" fill="#d8dee9">\fBmh\fR [\fB\-h\fR|\fB\-\-help\fR] [\fB\-V\fR|\fB\-\-version\fR] &lt;\fIsubcommands\fR&gt;</text>
+  <text x="18" y="190" fill="#d8dee9">.SH DESCRIPTION</text>
+  <text x="18" y="210" fill="#d8dee9">A modern command history manager</text>
+  <text x="18" y="230" fill="#d8dee9">.SH OPTIONS</text>
+  <text x="18" y="250" fill="#d8dee9">.TP</text>
+  <text x="18" y="270" fill="#d8dee9">\fB\-h\fR, \fB\-\-help\fR</text>
+  <text x="18" y="290" fill="#d8dee9">Print help</text>
+  <text x="18" y="310" fill="#d8dee9">.TP</text>
+  <text x="18" y="330" fill="#d8dee9">\fB\-V\fR, \fB\-\-version\fR</text>
+  <text x="18" y="350" fill="#d8dee9">Print version</text>
+  <text x="18" y="370" fill="#d8dee9">.SH SUBCOMMANDS</text>
+  <text x="18" y="390" fill="#d8dee9">.TP</text>
+  <text x="18" y="410" fill="#d8dee9">mh\-init(1)</text>
+  <text x="18" y="430" fill="#d8dee9">Generate shell integration code</text>
+  <text x="18" y="450" fill="#d8dee9">.TP</text>
+  <text x="18" y="470" fill="#d8dee9">mh\-record(1)</text>
+  <text x="18" y="490" fill="#d8dee9">Record one executed command</text>
+  <text x="18" y="510" fill="#d8dee9">.TP</text>
+  <text x="18" y="530" fill="#d8dee9">mh\-search(1)</text>
+  <text x="18" y="550" fill="#d8dee9">Search command history</text>
+  <text x="18" y="570" fill="#d8dee9">.TP</text>
+  <text x="18" y="590" fill="#d8dee9">mh\-last(1)</text>
+  <text x="18" y="610" fill="#d8dee9">Show recent commands</text>
+  <text x="18" y="630" fill="#d8dee9">.TP</text>
+  <text x="18" y="650" fill="#d8dee9">mh\-stats(1)</text>
+  <text x="18" y="670" fill="#d8dee9">Show usage statistics</text>
+  <text x="18" y="690" fill="#d8dee9">.TP</text>
+  <text x="18" y="710" fill="#d8dee9">mh\-delete(1)</text>
+  <text x="18" y="730" fill="#d8dee9">Delete command history records</text>
+  <text x="18" y="750" fill="#d8dee9">.TP</text>
+  <text x="18" y="770" fill="#d8dee9">mh\-clear(1)</text>
+  <text x="18" y="790" fill="#d8dee9">Clear command history</text>
+  <text x="18" y="810" fill="#d8dee9">.TP</text>
+  <text x="18" y="830" fill="#d8dee9">mh\-export(1)</text>
+  <text x="18" y="850" fill="#d8dee9">Export command history</text>
+  <text x="18" y="870" fill="#d8dee9">.TP</text>
+  <text x="18" y="890" fill="#d8dee9">mh\-import(1)</text>
+  <text x="18" y="910" fill="#d8dee9">Import command history</text>
+  <text x="18" y="930" fill="#d8dee9">.TP</text>
+  <text x="18" y="950" fill="#d8dee9">mh\-doctor(1)</text>
+  <text x="18" y="970" fill="#d8dee9">Check local configuration and database health</text>
+  <text x="18" y="990" fill="#d8dee9">.TP</text>
+  <text x="18" y="1010" fill="#d8dee9">mh\-config(1)</text>
+  <text x="18" y="1030" fill="#d8dee9">Inspect configuration</text>
+  <text x="18" y="1050" fill="#d8dee9">.TP</text>
+  <text x="18" y="1070" fill="#d8dee9">mh\-tag(1)</text>
+  <text x="18" y="1090" fill="#d8dee9">Add tags to commands</text>
+  <text x="18" y="1110" fill="#d8dee9">.TP</text>
+  <text x="18" y="1130" fill="#d8dee9">mh\-untag(1)</text>
+  <text x="18" y="1150" fill="#d8dee9">Remove tags from a command</text>
+  <text x="18" y="1170" fill="#d8dee9">.TP</text>
+  <text x="18" y="1190" fill="#d8dee9">mh\-tags(1)</text>
+  <text x="18" y="1210" fill="#d8dee9">List known tags</text>
+  <text x="18" y="1230" fill="#d8dee9">.TP</text>
+  <text x="18" y="1250" fill="#d8dee9">mh\-pin(1)</text>
+  <text x="18" y="1270" fill="#d8dee9">Pin commands</text>
+  <text x="18" y="1290" fill="#d8dee9">.TP</text>
+  <text x="18" y="1310" fill="#d8dee9">mh\-unpin(1)</text>
+  <text x="18" y="1330" fill="#d8dee9">Unpin commands</text>
+  <text x="18" y="1350" fill="#d8dee9">.TP</text>
+  <text x="18" y="1370" fill="#d8dee9">mh\-pinned(1)</text>
+  <text x="18" y="1390" fill="#d8dee9">Show pinned commands</text>
+  <text x="18" y="1410" fill="#d8dee9">.TP</text>
+  <text x="18" y="1430" fill="#d8dee9">mh\-pick(1)</text>
+  <text x="18" y="1450" fill="#d8dee9">Pick a command interactively and print it</text>
+  <text x="18" y="1470" fill="#d8dee9">.TP</text>
+  <text x="18" y="1490" fill="#d8dee9">mh\-tui(1)</text>
+  <text x="18" y="1510" fill="#d8dee9">Launch the interactive terminal interface</text>
+  <text x="18" y="1530" fill="#d8dee9">.TP</text>
+  <text x="18" y="1550" fill="#d8dee9">mh\-snippet(1)</text>
+  <text x="18" y="1570" fill="#d8dee9">Manage reusable command snippets</text>
+  <text x="18" y="1590" fill="#d8dee9">.TP</text>
+  <text x="18" y="1610" fill="#d8dee9">mh\-replay(1)</text>
+  <text x="18" y="1630" fill="#d8dee9">Re\-execute a command from history</text>
+  <text x="18" y="1650" fill="#d8dee9">.TP</text>
+  <text x="18" y="1670" fill="#d8dee9">mh\-risk(1)</text>
+  <text x="18" y="1690" fill="#d8dee9">Assess and scan risky commands in history</text>
+  <text x="18" y="1710" fill="#d8dee9">.TP</text>
+  <text x="18" y="1730" fill="#d8dee9">mh\-context(1)</text>
+  <text x="18" y="1750" fill="#d8dee9">Show git repository context for commands</text>
+  <text x="18" y="1770" fill="#d8dee9">.TP</text>
+  <text x="18" y="1790" fill="#d8dee9">mh\-diff(1)</text>
+  <text x="18" y="1810" fill="#d8dee9">Compare history groups</text>
+  <text x="18" y="1830" fill="#d8dee9">.TP</text>
+  <text x="18" y="1850" fill="#d8dee9">mh\-audit(1)</text>
+  <text x="18" y="1870" fill="#d8dee9">Show security audit log entries</text>
+  <text x="18" y="1890" fill="#d8dee9">.TP</text>
+  <text x="18" y="1910" fill="#d8dee9">mh\-private(1)</text>
+  <text x="18" y="1930" fill="#d8dee9">Manage private mode</text>
+  <text x="18" y="1950" fill="#d8dee9">.TP</text>
+  <text x="18" y="1970" fill="#d8dee9">mh\-vault(1)</text>
+  <text x="18" y="1990" fill="#d8dee9">Manage encrypted command vault</text>
+  <text x="18" y="2010" fill="#d8dee9">.TP</text>
+  <text x="18" y="2030" fill="#d8dee9">mh\-sync(1)</text>
+  <text x="18" y="2050" fill="#d8dee9">Manage optional remote sync</text>
+  <text x="18" y="2070" fill="#d8dee9">.TP</text>
+  <text x="18" y="2090" fill="#d8dee9">mh\-completions(1)</text>
+  <text x="18" y="2110" fill="#d8dee9">Generate shell completion scripts</text>
+  <text x="18" y="2130" fill="#d8dee9">.TP</text>
+  <text x="18" y="2150" fill="#d8dee9">mh\-man(1)</text>
+  <text x="18" y="2170" fill="#d8dee9">Generate the mh man page</text>
+  <text x="18" y="2190" fill="#d8dee9">.TP</text>
+  <text x="18" y="2210" fill="#d8dee9">mh\-about(1)</text>
+  <text x="18" y="2230" fill="#d8dee9">Show application and developer information</text>
+  <text x="18" y="2250" fill="#d8dee9">.TP</text>
+  <text x="18" y="2270" fill="#d8dee9">mh\-policy(1)</text>
+  <text x="18" y="2290" fill="#d8dee9">Evaluate and inspect policy rules</text>
+  <text x="18" y="2310" fill="#d8dee9">.TP</text>
+  <text x="18" y="2330" fill="#d8dee9">mh\-timeline(1)</text>
+  <text x="18" y="2350" fill="#d8dee9">Session timeline and incident forensics</text>
+  <text x="18" y="2370" fill="#d8dee9">.TP</text>
+  <text x="18" y="2390" fill="#d8dee9">mh\-hold(1)</text>
+  <text x="18" y="2410" fill="#d8dee9">Manage legal holds and retention</text>
+  <text x="18" y="2430" fill="#d8dee9">.TP</text>
+  <text x="18" y="2450" fill="#d8dee9">mh\-watch(1)</text>
+  <text x="18" y="2470" fill="#d8dee9">Stream audit events for SIEM integration</text>
+  <text x="18" y="2490" fill="#d8dee9">.TP</text>
+  <text x="18" y="2510" fill="#d8dee9">mh\-runbook(1)</text>
+  <text x="18" y="2530" fill="#d8dee9">Manage reusable runbooks from sessions</text>
+  <text x="18" y="2550" fill="#d8dee9">.TP</text>
+  <text x="18" y="2570" fill="#d8dee9">mh\-break\-glass(1)</text>
+  <text x="18" y="2590" fill="#d8dee9">Emergency recording override with mandatory reason</text>
+  <text x="18" y="2610" fill="#d8dee9">.TP</text>
+  <text x="18" y="2630" fill="#d8dee9">mh\-help(1)</text>
+  <text x="18" y="2650" fill="#d8dee9">Print this message or the help of the given subcommand(s)</text>
+  <text x="18" y="2670" fill="#d8dee9">.SH EXTRA</text>
+  <text x="18" y="2690" fill="#d8dee9">Author: Cuma Kurt &lt;cumakurt@gmail.com&gt;</text>
+  <text x="18" y="2710" fill="#d8dee9">GitHub: https://github.com/cumakurt/mh</text>
+  <text x="18" y="2730" fill="#d8dee9">LinkedIn: https://www.linkedin.com/in/cuma\-kurt\-34414917/</text>
+  <text x="18" y="2750" fill="#d8dee9">.SH VERSION</text>
+  <text x="18" y="2770" fill="#d8dee9">v0.1.0</text>
+  <text x="18" y="2790" fill="#d8dee9">.SH AUTHORS</text>
+  <text x="18" y="2810" fill="#d8dee9">Cuma Kurt &lt;cumakurt@gmail.com&gt;</text>
+  </g>
+</svg>

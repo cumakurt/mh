@@ -15,7 +15,7 @@ pub struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Generate shell integration code.
+    /// Install or generate shell integration code.
     Init(InitArgs),
     /// Record one executed command.
     Record(RecordArgs),
@@ -87,6 +87,8 @@ pub enum Command {
     Hold(HoldArgs),
     /// Stream audit events for SIEM integration.
     Watch(WatchArgs),
+    /// Export incident-response bundles.
+    Incident(IncidentArgs),
     /// Manage reusable runbooks from sessions.
     Runbook(RunbookArgs),
     /// Emergency recording override with mandatory reason.
@@ -95,8 +97,10 @@ pub enum Command {
 
 #[derive(Debug, Args)]
 pub struct InitArgs {
+    /// Shell integration to print/install. Omit to detect $SHELL and install automatically.
     #[arg(value_enum)]
-    pub shell: ShellKind,
+    pub shell: Option<ShellKind>,
+    /// Install the managed integration block into the resolved shell config.
     #[arg(long, conflicts_with = "repair")]
     pub install: bool,
     /// Remove duplicate mh shell hook registrations and managed blocks.
@@ -225,6 +229,9 @@ pub struct SearchArgs {
     pub fuzzy: bool,
     #[arg(long)]
     pub fts: bool,
+    /// Interpret the query as local natural language and rank likely matches.
+    #[arg(long, alias = "nl")]
+    pub semantic: bool,
     #[arg(long)]
     pub tag: Option<String>,
     #[arg(long)]
@@ -473,6 +480,9 @@ pub struct TuiArgs {
     pub category: Option<String>,
     #[arg(long)]
     pub pinned: bool,
+    /// Open a high-level operational dashboard instead of the history picker.
+    #[arg(long)]
+    pub dashboard: bool,
 }
 
 #[derive(Debug, Args)]
@@ -537,6 +547,12 @@ pub struct ReplayArgs {
     /// Reason required for policy approval on replay.
     #[arg(long)]
     pub reason: Option<String>,
+    /// Run a generated dry-run/preview command before replay when one is known.
+    #[arg(long = "risk-preview")]
+    pub risk_preview: bool,
+    /// Suppress safer-alternative and review checklist hints for risky commands.
+    #[arg(long = "no-risk-guidance")]
+    pub no_risk_guidance: bool,
 }
 
 #[derive(Debug, Args)]
@@ -745,9 +761,15 @@ pub struct PolicyArgs {
 pub enum PolicyCommand {
     /// List configured policy rules.
     List,
+    /// Export, verify, and apply signed policy packs.
+    Pack(PolicyPackArgs),
     /// Evaluate a command against policy rules.
     Check {
-        command: String,
+        #[arg(value_name = "COMMAND")]
+        command: Option<String>,
+        /// Backward-compatible form used by older shell hooks.
+        #[arg(long = "command", value_name = "COMMAND", hide = true)]
+        command_arg: Option<String>,
         #[arg(long)]
         hostname: Option<String>,
         #[arg(long)]
@@ -759,6 +781,37 @@ pub enum PolicyCommand {
         quiet: bool,
         #[arg(long)]
         json: bool,
+    },
+}
+
+#[derive(Debug, Args)]
+pub struct PolicyPackArgs {
+    #[command(subcommand)]
+    pub command: PolicyPackCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum PolicyPackCommand {
+    /// Export the active policy into a signed JSON pack.
+    Export {
+        file: String,
+        /// Signing key. Falls back to MH_POLICY_PACK_KEY.
+        #[arg(long)]
+        key: Option<String>,
+    },
+    /// Verify a signed policy pack.
+    Verify {
+        file: String,
+        /// Verification key. Falls back to MH_POLICY_PACK_KEY.
+        #[arg(long)]
+        key: Option<String>,
+    },
+    /// Verify and apply a signed policy pack to the active config.
+    Apply {
+        file: String,
+        /// Verification key. Falls back to MH_POLICY_PACK_KEY.
+        #[arg(long)]
+        key: Option<String>,
     },
 }
 
@@ -816,6 +869,26 @@ pub struct WatchArgs {
     pub follow: bool,
     #[arg(long, value_enum, default_value_t = AuditFormat::Json)]
     pub format: AuditFormat,
+}
+
+#[derive(Debug, Args)]
+pub struct IncidentArgs {
+    #[command(subcommand)]
+    pub command: IncidentCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum IncidentCommand {
+    /// Export session timeline, risk findings, audit proof, and related metadata as JSON.
+    Export {
+        #[arg(long)]
+        session: String,
+        #[arg(long, short)]
+        output: String,
+        /// Include full command text including secrets.
+        #[arg(long)]
+        include_secrets: bool,
+    },
 }
 
 #[derive(Debug, Args)]

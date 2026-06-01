@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="666" height="1072" role="img">
+  <title>mh command output</title>
+  <rect width="100%" height="100%" rx="8" fill="#101418"/>
+  <rect x="0.5" y="0.5" width="665" height="1071" rx="8" fill="none" stroke="#2f3b45"/>
+  <g font-family="JetBrains Mono, Fira Code, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+  <text x="18" y="30" fill="#8fd694">$ mh init zsh</text>
+  <text x="18" y="50" fill="#d8dee9"># mh shell integration for zsh</text>
+  <text x="18" y="70" fill="#d8dee9">if [[ -z &quot;${MH_SESSION_ID:-}&quot; ]]; then</text>
+  <text x="18" y="90" fill="#d8dee9">  export MH_SESSION_ID=&quot;$(date +%s)-$$&quot;</text>
+  <text x="18" y="110" fill="#d8dee9">fi</text>
+  <text x="18" y="130" fill="#d8dee9"></text>
+  <text x="18" y="150" fill="#d8dee9">_mh_preexec() {</text>
+  <text x="18" y="170" fill="#d8dee9">  case &quot;$1&quot; in</text>
+  <text x="18" y="190" fill="#d8dee9">    mh\ *) return ;;</text>
+  <text x="18" y="210" fill="#d8dee9">  esac</text>
+  <text x="18" y="230" fill="#d8dee9">  MH_LAST_COMMAND=&quot;$1&quot;</text>
+  <text x="18" y="250" fill="#d8dee9">  MH_START_TIME=&quot;$(date +%s%3N)&quot;</text>
+  <text x="18" y="270" fill="#d8dee9">}</text>
+  <text x="18" y="290" fill="#d8dee9"></text>
+  <text x="18" y="310" fill="#d8dee9">_mh_precmd() {</text>
+  <text x="18" y="330" fill="#d8dee9">  local exit_code=$?</text>
+  <text x="18" y="350" fill="#d8dee9">  if [[ -n &quot;${MH_LAST_COMMAND:-}&quot; ]]; then</text>
+  <text x="18" y="370" fill="#d8dee9">    local end_time=&quot;$(date +%s%3N)&quot;</text>
+  <text x="18" y="390" fill="#d8dee9">    local duration_ms=0</text>
+  <text x="18" y="410" fill="#d8dee9">    if [[ -n &quot;${MH_START_TIME:-}&quot; ]]; then</text>
+  <text x="18" y="430" fill="#d8dee9">      duration_ms=$((end_time - MH_START_TIME))</text>
+  <text x="18" y="450" fill="#d8dee9">    fi</text>
+  <text x="18" y="470" fill="#d8dee9">    command mh record \</text>
+  <text x="18" y="490" fill="#d8dee9">      --command &quot;$MH_LAST_COMMAND&quot; \</text>
+  <text x="18" y="510" fill="#d8dee9">      --cwd &quot;$PWD&quot; \</text>
+  <text x="18" y="530" fill="#d8dee9">      --shell &quot;zsh&quot; \</text>
+  <text x="18" y="550" fill="#d8dee9">      --exit-code &quot;$exit_code&quot; \</text>
+  <text x="18" y="570" fill="#d8dee9">      --duration-ms &quot;$duration_ms&quot; \</text>
+  <text x="18" y="590" fill="#d8dee9">      --session-id &quot;$MH_SESSION_ID&quot; &gt;/dev/null 2&gt;&amp;1</text>
+  <text x="18" y="610" fill="#d8dee9">    unset MH_LAST_COMMAND MH_START_TIME</text>
+  <text x="18" y="630" fill="#d8dee9">  fi</text>
+  <text x="18" y="650" fill="#d8dee9">}</text>
+  <text x="18" y="670" fill="#d8dee9"></text>
+  <text x="18" y="690" fill="#d8dee9">autoload -Uz add-zsh-hook</text>
+  <text x="18" y="710" fill="#d8dee9">add-zsh-hook preexec _mh_preexec</text>
+  <text x="18" y="730" fill="#d8dee9">add-zsh-hook precmd _mh_precmd</text>
+  <text x="18" y="750" fill="#d8dee9"></text>
+  <text x="18" y="770" fill="#d8dee9">if [[ -o interactive ]]; then</text>
+  <text x="18" y="790" fill="#d8dee9">  _mh_history_picker() {</text>
+  <text x="18" y="810" fill="#d8dee9">    local selected</text>
+  <text x="18" y="830" fill="#d8dee9">    selected=&quot;$(command mh pick --limit &quot;${MH_PICK_LIMIT:-100}&quot; &lt;/dev/tty)&quot;</text>
+  <text x="18" y="850" fill="#d8dee9">    if [[ -n &quot;$selected&quot; ]]; then</text>
+  <text x="18" y="870" fill="#d8dee9">      BUFFER=&quot;$selected&quot;</text>
+  <text x="18" y="890" fill="#d8dee9">      CURSOR=${#BUFFER}</text>
+  <text x="18" y="910" fill="#d8dee9">      zle redisplay</text>
+  <text x="18" y="930" fill="#d8dee9">    fi</text>
+  <text x="18" y="950" fill="#d8dee9">  }</text>
+  <text x="18" y="970" fill="#d8dee9"></text>
+  <text x="18" y="990" fill="#d8dee9">  zle -N _mh_history_picker</text>
+  <text x="18" y="1010" fill="#d8dee9">  bindkey &#x27;^[[A&#x27; _mh_history_picker</text>
+  <text x="18" y="1030" fill="#d8dee9">  bindkey &#x27;^[OA&#x27; _mh_history_picker</text>
+  <text x="18" y="1050" fill="#d8dee9">fi</text>
+  </g>
+</svg>

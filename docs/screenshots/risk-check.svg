@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="615" height="112" role="img">
+  <title>mh command output</title>
+  <rect width="100%" height="100%" rx="8" fill="#101418"/>
+  <rect x="0.5" y="0.5" width="614" height="111" rx="8" fill="none" stroke="#2f3b45"/>
+  <g font-family="JetBrains Mono, Fira Code, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+  <text x="18" y="30" fill="#8fd694">$ mh risk check &quot;rm -rf /&quot;</text>
+  <text x="18" y="50" fill="#d8dee9">Level               : critical</text>
+  <text x="18" y="70" fill="#d8dee9">Rule                : rm_recursive_root</text>
+  <text x="18" y="90" fill="#d8dee9">Description         : Recursive delete targeting root or system paths</text>
+  </g>
+</svg>

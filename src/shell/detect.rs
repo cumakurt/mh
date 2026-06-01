@@ -166,9 +166,6 @@ mod tests {
 
     #[test]
     fn maps_rbash_to_bash_kind() {
-        assert_eq!(
-            kind_from_path("/usr/bin/rbash"),
-            Some(ShellKind::Bash)
-        );
+        assert_eq!(kind_from_path("/usr/bin/rbash"), Some(ShellKind::Bash));
     }
 }

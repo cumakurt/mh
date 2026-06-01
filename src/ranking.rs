@@ -83,9 +83,7 @@ pub fn rank_indices(
     ranked.sort_by(|(score_a, index_a), (score_b, index_b)| {
         let total_a = *score_a + context_score(&rows[*index_a], ctx);
         let total_b = *score_b + context_score(&rows[*index_b], ctx);
-        total_b
-            .cmp(&total_a)
-            .then_with(|| index_a.cmp(index_b))
+        total_b.cmp(&total_a).then_with(|| index_a.cmp(index_b))
     });
     ranked.into_iter().map(|(_, index)| index).collect()
 }

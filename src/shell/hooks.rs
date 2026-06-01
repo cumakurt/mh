@@ -141,11 +141,7 @@ fn duplicate_patterns(shell: ShellKind) -> &'static [&'static str] {
             "mh init sh",
             "eval \"$(mh init sh)\"",
         ],
-        ShellKind::Pwsh => &[
-            "__mh_pwsh_loaded",
-            "AddToHistoryHandler",
-            "mh init pwsh",
-        ],
+        ShellKind::Pwsh => &["__mh_pwsh_loaded", "AddToHistoryHandler", "mh init pwsh"],
     }
 }
 

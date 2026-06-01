@@ -92,10 +92,7 @@ fn init(server: String, enable: bool) -> Result<()> {
     println!("{token}");
     println!();
     println!("On another host:");
-    println!(
-        "  mh sync setup \"{}\" \"{token}\"",
-        config.sync.server_url
-    );
+    println!("  mh sync setup \"{}\" \"{token}\"", config.sync.server_url);
     if enable {
         println!("  mh sync pull   # or push");
     } else {

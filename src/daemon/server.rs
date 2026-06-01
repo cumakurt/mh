@@ -32,16 +32,36 @@ impl Drop for ConnectionGuard {
     }
 }
 
+struct DaemonCleanupGuard {
+    active: bool,
+}
+
+impl DaemonCleanupGuard {
+    fn active() -> Self {
+        Self { active: true }
+    }
+
+    fn disarm(&mut self) {
+        self.active = false;
+    }
+}
+
+impl Drop for DaemonCleanupGuard {
+    fn drop(&mut self) {
+        if self.active {
+            let _ = cleanup_socket_and_pid();
+        }
+    }
+}
+
 pub fn run_daemon() -> Result<()> {
     let socket_path = record_socket_path();
     ensure_socket_parent(&socket_path)?;
-    if socket_path.exists() {
-        fs::remove_file(&socket_path)
-            .with_context(|| format!("failed to remove stale socket {}", socket_path.display()))?;
-    }
+    remove_stale_socket_if_present(&socket_path)?;
 
     let listener = UnixListener::bind(&socket_path)
         .with_context(|| format!("failed to bind daemon socket {}", socket_path.display()))?;
+    let mut cleanup_guard = DaemonCleanupGuard::active();
     config::restrict_file_permissions(&socket_path)?;
     listener
         .set_nonblocking(true)
@@ -89,6 +109,7 @@ pub fn run_daemon() -> Result<()> {
     }
 
     cleanup_socket_and_pid()?;
+    cleanup_guard.disarm();
     Ok(())
 }
 
@@ -299,14 +320,62 @@ fn read_pid_file() -> Result<u32> {
 
 fn cleanup_socket_and_pid() -> Result<()> {
     let socket = record_socket_path();
-    if socket.exists() {
-        fs::remove_file(&socket).ok();
-    }
+    remove_stale_socket_if_present(&socket).ok();
     let pid_path = record_pid_path();
-    if pid_path.exists() {
-        fs::remove_file(pid_path).ok();
-    }
+    remove_pid_file_if_present(&pid_path).ok();
     Ok(())
+}
+
+fn remove_stale_socket_if_present(path: &Path) -> Result<()> {
+    match path.symlink_metadata() {
+        Ok(metadata) if is_socket_file(&metadata) => fs::remove_file(path)
+            .with_context(|| format!("failed to remove stale socket {}", path.display())),
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            bail!(
+                "refusing to remove symlink daemon socket {}",
+                path.display()
+            )
+        }
+        Ok(_) => bail!(
+            "refusing to remove non-socket daemon path {}; remove it manually",
+            path.display()
+        ),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error)
+            .with_context(|| format!("failed to inspect daemon socket {}", path.display())),
+    }
+}
+
+#[cfg(unix)]
+fn is_socket_file(metadata: &fs::Metadata) -> bool {
+    use std::os::unix::fs::FileTypeExt;
+
+    metadata.file_type().is_socket()
+}
+
+#[cfg(not(unix))]
+fn is_socket_file(_metadata: &fs::Metadata) -> bool {
+    false
+}
+
+fn remove_pid_file_if_present(path: &Path) -> Result<()> {
+    match path.symlink_metadata() {
+        Ok(metadata) if metadata.file_type().is_file() => fs::remove_file(path)
+            .with_context(|| format!("failed to remove daemon pid file {}", path.display())),
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            bail!(
+                "refusing to remove symlink daemon pid file {}",
+                path.display()
+            )
+        }
+        Ok(_) => bail!(
+            "refusing to remove non-file daemon pid path {}; remove it manually",
+            path.display()
+        ),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error)
+            .with_context(|| format!("failed to inspect daemon pid file {}", path.display())),
+    }
 }
 
 fn install_signal_handlers() {

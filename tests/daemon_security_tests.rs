@@ -122,6 +122,42 @@ fn daemon_rejects_world_writable_socket_parent() {
 }
 
 #[test]
+#[cfg(unix)]
+fn daemon_refuses_to_replace_non_socket_path() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let _guard = ENV_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    std::fs::set_permissions(temp_dir.path(), std::fs::Permissions::from_mode(0o700))
+        .expect("chmod temp dir");
+    let socket_path = temp_dir.path().join("record.sock");
+    std::fs::write(&socket_path, "not a socket").expect("socket placeholder");
+
+    let original_socket = std::env::var_os("MH_DAEMON_SOCKET");
+    unsafe {
+        std::env::set_var("MH_DAEMON_SOCKET", &socket_path);
+    }
+
+    let result = mh::daemon::run_daemon();
+
+    unsafe {
+        match original_socket {
+            Some(value) => std::env::set_var("MH_DAEMON_SOCKET", value),
+            None => std::env::remove_var("MH_DAEMON_SOCKET"),
+        }
+    }
+
+    let error = result.expect_err("regular file must not be removed as a stale socket");
+    assert!(format!("{error:#}").contains("non-socket daemon path"));
+    assert_eq!(
+        std::fs::read_to_string(&socket_path).expect("placeholder should remain"),
+        "not a socket"
+    );
+}
+
+#[test]
 fn daemon_record_roundtrip_respects_security_masking() {
     let _guard = ENV_LOCK
         .lock()

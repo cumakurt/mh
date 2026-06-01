@@ -194,8 +194,7 @@ pub fn stored_command_execution_warnings(command: &str, is_masked: bool) -> Resu
     }
     if contains_secret(command)? {
         warnings.push(
-            "stored command still matches secret heuristics; verify it is safe to run"
-                .to_string(),
+            "stored command still matches secret heuristics; verify it is safe to run".to_string(),
         );
     }
     Ok(warnings)

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="607" height="352" role="img">
+  <title>mh command output</title>
+  <rect width="100%" height="100%" rx="8" fill="#101418"/>
+  <rect x="0.5" y="0.5" width="606" height="351" rx="8" fill="none" stroke="#2f3b45"/>
+  <g font-family="JetBrains Mono, Fira Code, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+  <text x="18" y="30" fill="#8fd694">$ mh doctor</text>
+  <text x="18" y="50" fill="#d8dee9">[OK   ] Config loaded from /tmp/tmp.Tn7ZkhZWWh/config/mh/config.toml</text>
+  <text x="18" y="70" fill="#d8dee9">[OK   ] Database opened at /tmp/tmp.Tn7ZkhZWWh/data/mh/history.db</text>
+  <text x="18" y="90" fill="#d8dee9">[INFO ] Database size: 0.14 MB / 512 MB</text>
+  <text x="18" y="110" fill="#d8dee9">[OK   ] Write permission available</text>
+  <text x="18" y="130" fill="#d8dee9">[OK   ] Config permissions are restricted</text>
+  <text x="18" y="150" fill="#d8dee9">[OK   ] Database permissions are restricted</text>
+  <text x="18" y="170" fill="#d8dee9">[OK   ] Database integrity check passed</text>
+  <text x="18" y="190" fill="#d8dee9">[OK   ] Database schema is current (version 8)</text>
+  <text x="18" y="210" fill="#d8dee9">[OK   ] Private mode is disabled</text>
+  <text x="18" y="230" fill="#d8dee9">[INFO ] Command count: 6</text>
+  <text x="18" y="250" fill="#d8dee9">Sync                : disabled (no server configured)</text>
+  <text x="18" y="270" fill="#d8dee9">Vault config        : disabled (keyring: enabled)</text>
+  <text x="18" y="290" fill="#d8dee9">[INFO ] Current shell: /usr/bin/zsh</text>
+  <text x="18" y="310" fill="#d8dee9">[OK   ] Shell integration is active (/root/.zshrc)</text>
+  <text x="18" y="330" fill="#d8dee9">[OK   ] Binary is in PATH: /usr/local/bin/mh</text>
+  </g>
+</svg>

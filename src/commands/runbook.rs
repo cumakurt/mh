@@ -65,9 +65,7 @@ pub fn run(args: RunbookArgs) -> Result<()> {
                     println!("[dry-run] {}", step.command);
                     continue;
                 }
-                for warning in
-                    security::stored_command_execution_warnings(&step.command, false)?
-                {
+                for warning in security::stored_command_execution_warnings(&step.command, false)? {
                     eprintln!("Warning (runbook step {}): {warning}", step.step_order);
                 }
                 ensure_execution_allowed(&config, &step.command, hostname.as_deref(), None)?;

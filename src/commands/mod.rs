@@ -12,6 +12,7 @@ pub mod doctor;
 pub mod export;
 pub mod hold;
 pub mod import_history;
+pub mod incident;
 pub mod init;
 pub mod last;
 pub mod man_page;
@@ -76,6 +77,7 @@ pub fn dispatch(cli: Cli) -> Result<()> {
         Command::Timeline(args) => timeline::run(args),
         Command::Hold(args) => hold::run(args),
         Command::Watch(args) => watch::run(args),
+        Command::Incident(args) => incident::run(args),
         Command::Runbook(args) => runbook::run(args),
         Command::BreakGlass(args) => break_glass::run(args),
     }

@@ -16,9 +16,7 @@ use crate::cli::ShellKind;
 
 pub fn integration(shell: ShellKind) -> &'static str {
     match shell {
-        ShellKind::Auto => integration(
-            detect::kind_from_env().unwrap_or(ShellKind::Sh),
-        ),
+        ShellKind::Auto => integration(detect::kind_from_env().unwrap_or(ShellKind::Sh)),
         ShellKind::Bash => bash::INTEGRATION,
         ShellKind::Zsh => zsh::INTEGRATION,
         ShellKind::Fish => fish::INTEGRATION,

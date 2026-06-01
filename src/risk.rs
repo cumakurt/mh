@@ -35,6 +35,13 @@ pub struct RiskAssessment {
     pub description: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct ExecutionGuidance {
+    pub safer_alternative: Option<String>,
+    pub preview_command: Option<String>,
+    pub checklist: Vec<String>,
+}
+
 const RISK_PATTERNS: &[(&str, &str, RiskLevel, &str)] = &[
     (
         r"(?i)\brm\s+(-[^\s]*r[^\s]*\s+|-[^\s]*f[^\s]*\s+)*(/|\~|/\*|/\.\.?|/\S*)",
@@ -177,6 +184,68 @@ pub fn is_at_least(level: RiskLevel, minimum: RiskLevel) -> bool {
     level >= minimum
 }
 
+pub fn execution_guidance(command: &str) -> ExecutionGuidance {
+    let trimmed = command.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let mut checklist = vec![
+        "verify the target host, cwd, and environment".to_string(),
+        "confirm backups or rollback path exist".to_string(),
+    ];
+
+    let (safer_alternative, preview_command) = if lower.starts_with("rm ") || lower.contains(" rm ")
+    {
+        checklist.push(
+            "prefer moving files to a quarantine directory before permanent delete".to_string(),
+        );
+        (
+            Some("Review targets first with: find <path> -maxdepth 1 -print".to_string()),
+            Some(format!("printf '%s\n' {}", shell_quote(trimmed))),
+        )
+    } else if lower.starts_with("kubectl delete ") {
+        (
+            Some(trimmed.replacen("kubectl delete", "kubectl get", 1)),
+            Some(format!("{trimmed} --dry-run=server -o yaml")),
+        )
+    } else if lower.starts_with("kubectl apply ") {
+        (
+            Some("kubectl diff -f <manifest>".to_string()),
+            Some(format!("{trimmed} --dry-run=server -o yaml")),
+        )
+    } else if lower.starts_with("helm upgrade ") || lower.starts_with("helm install ") {
+        (
+            Some(trimmed.replacen("helm ", "helm --dry-run ", 1)),
+            Some(format!("{trimmed} --dry-run --debug")),
+        )
+    } else if lower.starts_with("terraform apply") || lower.starts_with("terraform destroy") {
+        (
+            Some("terraform plan -out=tfplan".to_string()),
+            Some("terraform plan".to_string()),
+        )
+    } else if lower.starts_with("ansible-playbook ") {
+        (
+            Some(format!("{trimmed} --check --diff")),
+            Some(format!("{trimmed} --check --diff")),
+        )
+    } else if lower.starts_with("docker system prune") {
+        (
+            Some("docker system df && docker image ls".to_string()),
+            None,
+        )
+    } else {
+        (None, None)
+    };
+
+    ExecutionGuidance {
+        safer_alternative,
+        preview_command,
+        checklist,
+    }
+}
+
+fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\"'\"'"))
+}
+
 struct CompiledRiskRule {
     regex: Regex,
     rule_id: &'static str,
@@ -233,5 +302,16 @@ mod tests {
                 "risk rule {rule_id} has an invalid regex"
             );
         }
+    }
+
+    #[test]
+    fn guidance_suggests_kubectl_preview() {
+        let guidance = execution_guidance("kubectl delete deploy app");
+        assert!(
+            guidance
+                .preview_command
+                .as_deref()
+                .is_some_and(|command| command.contains("--dry-run=server"))
+        );
     }
 }

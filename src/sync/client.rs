@@ -1,10 +1,12 @@
+use std::io::Read;
+
 use anyhow::{Context, Result, bail};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use chrono::{SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use zstd::stream::{decode_all, encode_all};
+use zstd::stream::{Decoder, encode_all};
 
 use crate::config::{AppConfig, config_path};
 use crate::db::Database;
@@ -31,6 +33,10 @@ struct SyncResponse {
     payload: String,
     synced_at: Option<String>,
 }
+
+const MAX_SYNC_PAYLOAD_BYTES: usize = 64 * 1024 * 1024;
+const MAX_SYNC_DECOMPRESSED_BYTES: usize = 256 * 1024 * 1024;
+const MAX_SYNC_ROWS: usize = 1_000_000;
 
 pub fn push(config: &AppConfig, database: &Database) -> Result<()> {
     let after = if config.sync.last_synced_at.trim().is_empty() {
@@ -145,14 +151,27 @@ pub fn pull(config: &AppConfig, database: &Database) -> Result<()> {
     let encoded = STANDARD
         .decode(body.payload.as_bytes())
         .context("invalid sync payload encoding")?;
+    if encoded.len() > MAX_SYNC_PAYLOAD_BYTES {
+        bail!(
+            "sync payload exceeds maximum size of {} bytes",
+            MAX_SYNC_PAYLOAD_BYTES
+        );
+    }
     let compressed = if config.sync.encrypt_payload {
         decrypt_payload(&config.sync.token, &encoded)?
     } else {
         encoded
     };
-    let json = decode_all(compressed.as_slice())?;
+    let json = decode_zstd_bounded(compressed.as_slice())?;
     let envelope: SyncEnvelope =
         serde_json::from_slice(&json).context("failed to parse sync payload")?;
+    if envelope.commands.len() > MAX_SYNC_ROWS {
+        bail!(
+            "sync payload contains {} rows, exceeding the maximum of {}",
+            envelope.commands.len(),
+            MAX_SYNC_ROWS
+        );
+    }
 
     let security = SecurityEngine::from_config(config)?;
     let mut imported = 0;
@@ -223,7 +242,49 @@ fn sync_url(base: &str, action: &str) -> Result<String> {
     if trimmed.is_empty() {
         bail!("sync server URL must not be empty");
     }
-    Ok(format!("{trimmed}/api/v1/sync/{action}"))
+    let mut url = reqwest::Url::parse(trimmed).context("sync server URL must be absolute")?;
+    match url.scheme() {
+        "https" => {}
+        "http" if is_local_http_url(&url) => {}
+        "http" => bail!("sync server URL must use https unless it points to localhost"),
+        scheme => bail!("unsupported sync server URL scheme: {scheme}"),
+    }
+    url.set_query(None);
+    url.set_fragment(None);
+    url.path_segments_mut()
+        .map_err(|_| anyhow::anyhow!("sync server URL cannot be used as a base URL"))?
+        .pop_if_empty()
+        .extend(["api", "v1", "sync", action]);
+    Ok(url.to_string())
+}
+
+fn is_local_http_url(url: &reqwest::Url) -> bool {
+    matches!(
+        url.host_str(),
+        Some("localhost") | Some("127.0.0.1") | Some("::1")
+    )
+}
+
+fn decode_zstd_bounded(input: &[u8]) -> Result<Vec<u8>> {
+    let mut decoder = Decoder::new(input).context("failed to open sync zstd payload")?;
+    let mut output = Vec::new();
+    let mut buffer = [0_u8; 8192];
+    loop {
+        let read = decoder
+            .read(&mut buffer)
+            .context("failed to decompress sync payload")?;
+        if read == 0 {
+            break;
+        }
+        if output.len() + read > MAX_SYNC_DECOMPRESSED_BYTES {
+            bail!(
+                "decompressed sync payload exceeds maximum size of {} bytes",
+                MAX_SYNC_DECOMPRESSED_BYTES
+            );
+        }
+        output.extend_from_slice(&buffer[..read]);
+    }
+    Ok(output)
 }
 
 fn save_last_synced_at(config: &AppConfig, synced_at: &str) -> Result<()> {
@@ -241,4 +302,37 @@ fn hash_command(command: &str) -> String {
     let mut hasher = Sha256::new();
     hasher.update(command.as_bytes());
     format!("{:x}", hasher.finalize())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn rejects_plain_http_remote_url() {
+        let error = sync_url("http://history.example.com", "push")
+            .expect_err("remote http URL should be rejected");
+        assert!(format!("{error:#}").contains("https"));
+    }
+
+    #[test]
+    fn allows_local_http_url() {
+        let url = sync_url("http://127.0.0.1:8080/base", "pull").expect("local URL");
+        assert_eq!(url, "http://127.0.0.1:8080/base/api/v1/sync/pull");
+    }
+
+    #[test]
+    fn rejects_oversized_decompressed_payload() {
+        let mut input = Vec::new();
+        let mut encoder = zstd::stream::Encoder::new(&mut input, 1).expect("encoder");
+        let chunk = vec![b'a'; 1024];
+        for _ in 0..(MAX_SYNC_DECOMPRESSED_BYTES / 1024 + 1) {
+            std::io::Write::write_all(&mut encoder, &chunk).expect("write");
+        }
+        encoder.finish().expect("finish");
+
+        let error =
+            decode_zstd_bounded(&input).expect_err("oversized decompressed payload should fail");
+        assert!(format!("{error:#}").contains("decompressed sync payload exceeds"));
+    }
 }

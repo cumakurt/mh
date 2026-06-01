@@ -8,7 +8,7 @@ use anyhow::Result;
 use crate::break_glass;
 use crate::config::AppConfig;
 use crate::environment;
-use crate::policy::{PolicyAction, PolicyEngine};
+use crate::policy::{PolicyAction, PolicyDecision, PolicyEngine};
 
 /// Exit codes for `mh policy check --quiet`.
 pub const EXIT_ALLOW: i32 = 0;
@@ -32,49 +32,79 @@ pub struct PolicyCheckRequest<'a> {
     pub quiet: bool,
 }
 
-pub fn evaluate_request(config: &AppConfig, request: &PolicyCheckRequest<'_>) -> PolicyCheckOutcome {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PolicyEvaluation {
+    pub decision: PolicyDecision,
+    pub hostname: Option<String>,
+    pub environment: Option<String>,
+}
+
+pub fn evaluate(config: &AppConfig, request: &PolicyCheckRequest<'_>) -> PolicyEvaluation {
     if !config.policy.enforce_in_shell {
-        return PolicyCheckOutcome::Allow;
+        return allow_evaluation("enforcement_disabled", "Policy enforcement is disabled");
     }
 
     if break_glass::is_active() {
-        return PolicyCheckOutcome::Allow;
+        return allow_evaluation("break_glass", "Break-glass mode is active");
     }
 
     if env::var_os("MH_POLICY_APPROVE").is_some() {
-        return PolicyCheckOutcome::Allow;
+        return allow_evaluation("approved", "MH_POLICY_APPROVE is set");
     }
 
-    let hostname = request
-        .hostname
-        .map(str::to_string)
-        .or_else(|| hostname::get().ok().and_then(|value| value.into_string().ok()));
+    let hostname = request.hostname.map(str::to_string).or_else(|| {
+        hostname::get()
+            .ok()
+            .and_then(|value| value.into_string().ok())
+    });
 
-    let cwd = request
-        .cwd
-        .map(str::to_string)
-        .or_else(|| env::current_dir().ok().map(|path| path.to_string_lossy().into_owned()));
+    let cwd = request.cwd.map(str::to_string).or_else(|| {
+        env::current_dir()
+            .ok()
+            .map(|path| path.to_string_lossy().into_owned())
+    });
 
     let environment = request.environment.map(str::to_string).or_else(|| {
-        cwd.as_deref().map(|path| {
-            environment::classify_label(config, hostname.as_deref(), Some(path), None)
-        })
+        cwd.as_deref()
+            .map(|path| environment::classify_label(config, hostname.as_deref(), Some(path), None))
     });
 
     let Ok(engine) = PolicyEngine::from_config(config) else {
-        return PolicyCheckOutcome::Allow;
+        return allow_evaluation(
+            "policy_invalid",
+            "Policy config is invalid; command allowed",
+        );
     };
-    let decision = engine.evaluate(
-        request.command,
-        hostname.as_deref(),
-        environment.as_deref(),
-    );
+    let decision = engine.evaluate(request.command, hostname.as_deref(), environment.as_deref());
 
-    match decision.action {
+    PolicyEvaluation {
+        decision,
+        hostname,
+        environment,
+    }
+}
+
+pub fn evaluate_request(
+    config: &AppConfig,
+    request: &PolicyCheckRequest<'_>,
+) -> PolicyCheckOutcome {
+    match evaluate(config, request).decision.action {
         PolicyAction::Allow => PolicyCheckOutcome::Allow,
         PolicyAction::Warn => PolicyCheckOutcome::Warn,
         PolicyAction::Deny => PolicyCheckOutcome::Deny,
         PolicyAction::RequireApproval => PolicyCheckOutcome::RequireApproval,
+    }
+}
+
+fn allow_evaluation(rule_id: &str, message: &str) -> PolicyEvaluation {
+    PolicyEvaluation {
+        decision: PolicyDecision {
+            action: PolicyAction::Allow,
+            rule_id: rule_id.to_string(),
+            message: message.to_string(),
+        },
+        hostname: None,
+        environment: None,
     }
 }
 

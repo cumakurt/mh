@@ -369,28 +369,28 @@ fn masks_pip_password_flag() {
 
 #[test]
 fn masks_poetry_http_basic_password() {
-    assert_masked(
-        "poetry config http-basic.repo myuser mypass",
-        "mypass",
-    );
+    assert_masked("poetry config http-basic.repo myuser mypass", "mypass");
 }
 
 #[test]
 fn masks_poetry_token_env() {
-    assert_masked("POETRY_PYPI_TOKEN_PYPI=secret-token-value", "secret-token-value");
+    assert_masked(
+        "POETRY_PYPI_TOKEN_PYPI=secret-token-value",
+        "secret-token-value",
+    );
 }
 
 #[test]
 fn masks_cargo_login_token() {
-    assert_masked("cargo login --registry crates-io secret.crates.token", "secret.crates.token");
+    assert_masked(
+        "cargo login --registry crates-io secret.crates.token",
+        "secret.crates.token",
+    );
 }
 
 #[test]
 fn masks_cargo_registry_token_env() {
-    assert_masked(
-        "CARGO_REGISTRIES_MY_REGISTRY_TOKEN=abc123",
-        "abc123",
-    );
+    assert_masked("CARGO_REGISTRIES_MY_REGISTRY_TOKEN=abc123", "abc123");
 }
 
 #[test]

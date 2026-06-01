@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="758" height="152" role="img">
+  <title>mh command output</title>
+  <rect width="100%" height="100%" rx="8" fill="#101418"/>
+  <rect x="0.5" y="0.5" width="757" height="151" rx="8" fill="none" stroke="#2f3b45"/>
+  <g font-family="JetBrains Mono, Fira Code, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+  <text x="18" y="30" fill="#8fd694">$ mh risk scan --limit 5</text>
+  <text x="18" y="50" fill="#d8dee9">┌────┬──────────┬──────────────────────────┬───────────────────┬─────────────────────┐</text>
+  <text x="18" y="70" fill="#d8dee9">│ ID ┆ Level    ┆ Time                     ┆ Rule              ┆ Command             │</text>
+  <text x="18" y="90" fill="#d8dee9">╞════╪══════════╪══════════════════════════╪═══════════════════╪═════════════════════╡</text>
+  <text x="18" y="110" fill="#d8dee9">│ 5  ┆ critical ┆ 2026-05-31T18:55:59.331Z ┆ rm_recursive_root ┆ rm -rf /tmp/sandbox │</text>
+  <text x="18" y="130" fill="#d8dee9">└────┴──────────┴──────────────────────────┴───────────────────┴─────────────────────┘</text>
+  </g>
+</svg>

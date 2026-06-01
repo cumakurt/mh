@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1044" height="232" role="img">
+  <title>mh command output</title>
+  <rect width="100%" height="100%" rx="8" fill="#101418"/>
+  <rect x="0.5" y="0.5" width="1043" height="231" rx="8" fill="none" stroke="#2f3b45"/>
+  <g font-family="JetBrains Mono, Fira Code, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+  <text x="18" y="30" fill="#8fd694">$ mh tui --limit 5</text>
+  <text x="18" y="50" fill="#d8dee9">┌────┬─────────────────────────┬──────┬──────────┬───────────┬──────────┬────────┬─────────────────────────────────────┐</text>
+  <text x="18" y="70" fill="#d8dee9">│ ID │ Time                    │ Exit │ Duration │ CWD       │ Category │ Tags   │ Command                             │</text>
+  <text x="18" y="90" fill="#d8dee9">╞────╪─────────────────────────╪──────╪──────────╪───────────╪──────────╪────────╪─────────────────────────────────────╡</text>
+  <text x="18" y="110" fill="#d8dee9">│ 6  │ 2026-05-31 18:55:59.337 │ 0    │ 800ms    │ /tmp/demo │ -        │ -      │ kubectl get pods                    │</text>
+  <text x="18" y="130" fill="#d8dee9">│ 5  │ 2026-05-31 18:55:59.331 │ 0    │ 5ms      │ /tmp/demo │ -        │ -      │ rm -rf /tmp/sandbox [risk:critical] │</text>
+  <text x="18" y="150" fill="#d8dee9">│ 4  │ 2026-05-31 18:55:59.325 │ 1    │ 5400ms   │ /tmp/demo │ -        │ -      │ pytest tests/unit                   │</text>
+  <text x="18" y="170" fill="#d8dee9">│ 3  │ 2026-05-31 18:55:59.319 │ 0    │ 250ms    │ /tmp/demo │ network  │ -      │ curl https://example.com            │</text>
+  <text x="18" y="190" fill="#d8dee9">│ 2  │ 2026-05-31 18:55:59.313 │ 0    │ 120ms    │ /tmp/demo │ docker   │ docker │ docker ps -a                        │</text>
+  <text x="18" y="210" fill="#d8dee9">└────┴─────────────────────────┴──────┴──────────┴───────────┴──────────┴────────┴─────────────────────────────────────┘</text>
+  </g>
+</svg>

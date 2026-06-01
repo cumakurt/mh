@@ -40,17 +40,18 @@ The database is local-first. By default, regular users and root have separate da
 - Secret detection, masking, ignore rules, private mode, audit logs, and oversized-command rejection (256 KiB max).
 - `mh doctor` health checks with human-readable output or `--json` for automation/CI.
 - Safe file writes for config, exports, completions, and man pages (atomic temp+rename, mode `0600`, symlink rejection).
-- Unified policy engine with allow, warn, deny, and require-approval actions.
+- Unified policy engine with allow, warn, deny, require-approval actions, and shared-key signed policy packs.
 - Tamper-evident audit log with SHA-256 hash chain verification.
-- Session timeline forensics, legal holds, retention purge, and runbooks.
+- Session timeline forensics, incident bundle export, legal holds, retention purge, and runbooks.
 - Environment classification (production, staging, development) on every recorded command.
 - SIEM-friendly audit streaming (syslog, webhook, CEF/JSON) via `mh watch`.
 - Break-glass mode for emergency recording override with mandatory reason and TTL.
-- Search modes: substring, regex, fuzzy, and FTS.
+- Search modes: substring, regex, fuzzy, FTS, and local natural-language ranking.
 - Filters for CWD, user, shell, date range, success/failure, tag, category, pinned state, and duration.
 - `last`, `stats`, `delete`, `clear`, `export`, and `import` workflows.
-- Tags, pins, reusable snippets, replay, diff, audit, policy, timeline, hold, runbook, watch, and break-glass commands.
-- Ratatui terminal UI with live fuzzy filtering, detail panel, clipboard copy, pin/unpin, tagging, and delete confirmation.
+- Tags, pins, reusable snippets, replay, diff, audit, policy, incident, timeline, hold, runbook, watch, and break-glass commands.
+- Risk-aware replay guidance with optional preview commands for destructive operations.
+- Ratatui terminal UI with live fuzzy filtering, dashboard mode, detail panel, clipboard copy, pin/unpin, tagging, and delete confirmation.
 - Encrypted command vault using AES-256-GCM with passphrase input.
 - Optional encrypted remote sync with `sync` feature flag (`--features sync`).
 - Installer that detects Linux distribution, package manager, and shell.
@@ -94,13 +95,14 @@ When `/bin/sh` is a symlink to bash, `mh init sh` tells you to use `mh init bash
 Install integration:
 
 ```bash
-mh init auto --install    # reads $SHELL (bash, zsh, sh, pwsh, …)
-mh init bash --install
+mh init                  # detects $SHELL, installs the managed block, prints the source command
+mh init --install        # same behavior, explicit
+mh init bash --install   # force a shell
 mh init zsh --install
-mh init sh --install      # dash / posix sh
-mh init pwsh --install    # PowerShell 7+
+mh init sh --install     # dash / posix sh
+mh init pwsh --install   # PowerShell 7+
 mh init fish --install
-mh init nushell           # paste into config.nu
+mh init nushell --install
 ```
 
 Or use `./install.sh --shell <shell>` which picks the first existing config file from the list above.
@@ -142,6 +144,12 @@ Every command below was verified with `scripts/verify-all-commands.sh` in an iso
 ./scripts/verify-all-commands.sh
 ```
 
+The SVG screenshots are generated from `docs/examples/*.txt`:
+
+```bash
+./scripts/render-example-screenshots.py
+```
+
 ### Core
 
 #### `mh about`
@@ -169,6 +177,7 @@ mh doctor --json | jq -e '.status == "ok" and .warning_count == 0'
 ![mh init zsh](docs/screenshots/init-zsh.svg)
 
 ```bash
+mh init
 mh init bash
 mh init zsh
 mh init fish
@@ -490,6 +499,7 @@ mh replay 152 --dry-run
 mh replay 152
 mh replay 152 --yes
 mh replay 152 --reason "approved by on-call" --yes
+mh replay 152 --risk-preview
 ```
 
 Policy rules with `require_approval` need `--reason` or `--yes` before execution.
@@ -549,10 +559,10 @@ The installer performs these steps:
 - Installs `mh` into `/usr/local/bin` or `~/.local/bin`.
 - Installs Bash, Zsh, and Fish completions.
 - Installs the `mh` man page.
-- Detects the current shell and enables shell integration via `mh init <shell> --install`.
+- Detects the current shell and enables shell integration via `mh init`.
 - Runs `mh doctor` at the end.
 
-Shell hooks are installed by delegating to `mh init <shell> --install` (same code path as manual setup). If integration fails, run `mh init <shell> --repair` to remove duplicate managed blocks and reinstall.
+Shell hooks are installed by delegating to `mh init` (same code path as manual setup). If integration fails, run `mh init --repair` to repair the detected shell, or `mh init <shell> --repair` to force a shell.
 
 Common installer options:
 
@@ -578,7 +588,7 @@ INSTALL_DIR="$HOME/.local/bin" ./install.sh
 MH_SHELL=zsh ./install.sh
 ```
 
-After installation, open a new shell session or reload your shell config:
+After installation, open a new shell session or reload your shell config. `mh init` prints the exact command for your detected shell:
 
 ```bash
 source ~/.zshrc
@@ -640,11 +650,16 @@ cargo run -- last
 
 ## Shell Integration
 
-`mh init <shell>` prints shell integration code. The installer writes this integration automatically, but you can also install it manually.
+`mh init` detects `$SHELL`, appends the managed integration block to the resolved shell config file, and prints the command needed to activate it in the current terminal. New shell sessions load the integration automatically.
+
+Because `mh` runs as a child process, it cannot directly `source` the parent shell process for you. Run the printed `source ...` command once in the current terminal, or start a new shell.
+
+`mh init <shell>` still prints shell integration code for manual setups and tests. Add `--install` when you want to force installation for a specific shell.
 
 Supported shells:
 
 ```bash
+mh init
 mh init bash
 mh init zsh
 mh init fish
@@ -676,18 +691,19 @@ mh init nushell | save -f ~/.config/nushell/mh.nu
 source ~/.config/nushell/mh.nu
 ```
 
-`mh init <shell> --install` appends a managed block to the resolved config file (see **Platform and Shell Compatibility**). The installer uses the same path resolution rules.
+`mh init` and `mh init <shell> --install` append a managed block to the resolved config file (see **Platform and Shell Compatibility**). The installer uses the same path resolution rules.
 
 Repair duplicate or broken integration:
 
 ```bash
+mh init --repair
 mh init zsh --repair
 mh init bash --repair
 ```
 
 `--repair` removes all managed `mh` blocks from the config file, then reinstalls a single clean block. Re-run it if hooks were appended more than once.
 
-On **login shells** that only source `~/.bash_profile` (common on macOS-style layouts and some RHEL defaults), `mh init bash --install` targets that file when `.bashrc` is missing.
+On **login shells** that only source `~/.bash_profile` (common on macOS-style layouts and some RHEL defaults), `mh init` and `mh init bash --install` target that file when `.bashrc` is missing.
 
 ### Hook Behavior
 
@@ -1101,6 +1117,15 @@ mh search --fts "docker NEAR ps"
 mh search --fts "git"
 ```
 
+Local natural-language search:
+
+```bash
+mh search --semantic "today failed deploy commands in prod"
+mh search --nl "root ssh commands from last week"
+```
+
+`--semantic` uses local parsing and ranking only. It derives likely filters such as failure/success, date range, environment, SSH/root state, category, and risk terms from the query. Explicit flags still win when you pass them.
+
 Tag and category filters:
 
 ```bash
@@ -1138,7 +1163,7 @@ mh search docker --json
 mh search docker --plain
 ```
 
-Search mode rule: `--regex`, `--fuzzy`, and `--fts` are mutually exclusive.
+Search mode rule: `--regex`, `--fuzzy`, `--fts`, and `--semantic` are mutually exclusive.
 
 ## Terminal UI
 
@@ -1146,6 +1171,7 @@ Launch the TUI:
 
 ```bash
 mh tui
+mh tui --dashboard
 ```
 
 Start with a filter:
@@ -1173,6 +1199,8 @@ Keyboard actions:
 - `q` / `Esc`: exit
 
 The TUI shows a list on the left and command details on the right. Details include ID, pinned state, masked state, timestamp, exit code, duration, shell, CWD, category, tags, and full command text.
+
+Dashboard mode shows high-level command volume, success/failure split, top commands, risky recent commands, and active environment tiers in one terminal screen.
 
 When stdin or stderr is not a terminal, `mh tui` falls back to normal table output.
 
@@ -1482,6 +1510,13 @@ Ask before running:
 mh replay 152 --confirm
 ```
 
+Run a safer preview first when mh can derive one:
+
+```bash
+mh replay 152 --risk-preview
+mh replay 152 --no-risk-guidance
+```
+
 Replay with policy approval reason:
 
 ```bash
@@ -1490,7 +1525,7 @@ mh replay 152 --reason "change ticket INC-1234" --yes
 
 Replay uses `$SHELL -c <command>` (non-login). If `$SHELL` is not set, it falls back to `/bin/sh`.
 
-Before execution, `mh replay` prints warnings when the stored command was masked, still matches secret heuristics, or will run with your current privileges. Use `--dry-run` to print the redacted command without executing. `mh runbook run` applies the same warnings per step.
+Before execution, `mh replay` prints warnings when the stored command was masked, still matches secret heuristics, or will run with your current privileges. For risky commands, it also prints safer alternatives, preview commands, and a short review checklist when known. Use `--dry-run` to print the redacted command without executing. `mh runbook run` applies the same warnings per step.
 
 When a matching policy rule has action `deny`, replay is blocked and an audit entry is written. When action is `require_approval`, pass `--reason` or `--yes`.
 
@@ -1623,6 +1658,17 @@ Default rules:
 
 Customize rules in `[policy]` in config. Each rule can match on risk level, regex pattern, environment tier, or hostname pattern.
 
+Export, verify, and apply a shared-key signed policy pack:
+
+```bash
+export MH_POLICY_PACK_KEY='change-this-shared-secret'
+mh policy pack export policy-pack.json
+mh policy pack verify policy-pack.json
+mh policy pack apply policy-pack.json
+```
+
+Use `--key` on individual commands when you do not want to read the key from `MH_POLICY_PACK_KEY`.
+
 ## Session Timeline
 
 Inspect every command in a session for incident response:
@@ -1633,6 +1679,16 @@ mh timeline --session abc-123 --json
 ```
 
 Output includes command text, timestamps, exit codes, environment tier, and detected risk level.
+
+## Incident Bundles
+
+Export a session bundle for review or handoff:
+
+```bash
+mh incident export --session "$MH_SESSION_ID" --output incident.json
+```
+
+The bundle includes the session timeline, risky commands, audit-chain verification status, and recent audit events. Command text and audit messages are redacted by default; add `--include-secrets` only for a controlled forensic handoff.
 
 ## Legal Hold And Retention
 
@@ -2176,9 +2232,9 @@ mh search --env production --limit 100
 - SIEM webhook delivery requires `--features sync`; syslog TCP works in the default build.
 - Fleet control plane (`mh-server`) is not included in this release.
 - Vault passphrases can be stored in the OS keyring when `vault.use_keyring = true`. `MH_VAULT_PASSPHRASE` remains supported.
-- PowerShell on Linux is not a shell integration target in this build.
+- PowerShell integration targets PowerShell 7+ with PSReadLine available.
 - Import supports JSON, CSV, and compressed JSON. Markdown export is for human-readable reports, not re-import.
-- Nushell `--install` is not automated; paste `mh init nushell` into `config.nu` manually.
+- `mh init` prints an activation command because a child process cannot directly source the already-running parent shell.
 - JSON/CSV export loads the full filtered result set into memory; very large exports may need narrower date/tag filters.
 
 ## Development Checklist

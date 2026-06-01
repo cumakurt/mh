@@ -1090,7 +1090,7 @@ fn check_disk_space(styler: &Styler, path: &Path) {
         );
         return;
     }
-    let available = stat.f_bavail as u64 * stat.f_frsize as u64;
+    let available = stat.f_bavail.saturating_mul(stat.f_frsize);
     const MIN_FREE_BYTES: u64 = 100 * 1024 * 1024;
     if available < MIN_FREE_BYTES {
         say(

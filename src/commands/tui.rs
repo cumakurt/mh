@@ -18,12 +18,16 @@ use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph, Wra
 use crate::cli::TuiArgs;
 use crate::config::AppConfig;
 use crate::db::Database;
-use crate::models::{CommandRow, SearchFilters};
+use crate::models::{CommandRow, SearchFilters, StatEntry, StatsPeriod, StatsSummary};
 use crate::output;
+use crate::risk::{self, RiskLevel};
 
 pub fn run(args: TuiArgs) -> Result<()> {
     let config = AppConfig::load()?;
     let database = Database::open(&config)?;
+    if args.dashboard {
+        return run_dashboard(&database);
+    }
     let rows = database.search_commands(&SearchFilters {
         query: args.query.clone(),
         cwd: None,
@@ -60,6 +64,96 @@ pub fn run(args: TuiArgs) -> Result<()> {
         println!("{command}");
     }
     Ok(())
+}
+
+struct DashboardData {
+    summary: StatsSummary,
+    risky: Vec<CommandRow>,
+    environments: Vec<StatEntry>,
+}
+
+fn run_dashboard(database: &Database) -> Result<()> {
+    let data = dashboard_data(database)?;
+    if !io::stdin().is_terminal() || !io::stderr().is_terminal() {
+        print_dashboard_plain(&data);
+        return Ok(());
+    }
+
+    let mut terminal = TuiTerminal::enter()?;
+    loop {
+        terminal
+            .terminal
+            .draw(|frame| draw_dashboard(frame, &data))?;
+        if let Event::Key(key) = event::read()? {
+            if key.kind != KeyEventKind::Press {
+                continue;
+            }
+            if matches!(key.code, KeyCode::Esc | KeyCode::Char('q'))
+                || (key.code == KeyCode::Char('c') && key.modifiers.contains(KeyModifiers::CONTROL))
+            {
+                break;
+            }
+        }
+    }
+    Ok(())
+}
+
+fn dashboard_data(database: &Database) -> Result<DashboardData> {
+    let summary = database.stats_summary(StatsPeriod::All, 5)?;
+    let environments = database.distinct_environments(5)?;
+    let rows = database.search_commands(&SearchFilters {
+        query: None,
+        cwd: None,
+        failed: false,
+        success: false,
+        user: None,
+        shell: None,
+        after: None,
+        before: None,
+        regex: false,
+        fuzzy: false,
+        fts: false,
+        tag: None,
+        category: None,
+        pinned: false,
+        duration_gt: None,
+        duration_lt: None,
+        hostname: None,
+        ssh: false,
+        root: false,
+        limit: 500,
+        session_id: None,
+        git_repo: None,
+        git_branch: None,
+        git_commit: None,
+        environment: None,
+    })?;
+    let risky = rows
+        .into_iter()
+        .filter(|row| risk::assess_command(&row.command).is_some())
+        .take(8)
+        .collect();
+
+    Ok(DashboardData {
+        summary,
+        risky,
+        environments,
+    })
+}
+
+fn print_dashboard_plain(data: &DashboardData) {
+    println!("mh dashboard");
+    println!("Total commands: {}", data.summary.total_commands);
+    println!("Failed commands: {}", data.summary.failed_commands);
+    println!(
+        "Error rate: {:.1}%",
+        if data.summary.total_commands == 0 {
+            0.0
+        } else {
+            (data.summary.failed_commands as f64 / data.summary.total_commands as f64) * 100.0
+        }
+    );
+    println!("Risky recent commands: {}", data.risky.len());
 }
 
 fn run_tui(
@@ -208,11 +302,18 @@ impl TuiTerminal {
     fn enter() -> Result<Self> {
         enable_raw_mode()?;
         let mut stderr = io::stderr();
-        execute!(stderr, EnterAlternateScreen)?;
+        if let Err(error) = execute!(stderr, EnterAlternateScreen) {
+            let _ = disable_raw_mode();
+            return Err(error.into());
+        }
         let backend = CrosstermBackend::new(stderr);
-        Ok(Self {
-            terminal: Terminal::new(backend)?,
-        })
+        match Terminal::new(backend) {
+            Ok(terminal) => Ok(Self { terminal }),
+            Err(error) => {
+                let _ = disable_raw_mode();
+                Err(error.into())
+            }
+        }
     }
 }
 
@@ -479,6 +580,102 @@ fn draw(frame: &mut ratatui::Frame<'_>, app: &mut TuiApp) {
     ))
     .block(Block::default().borders(Borders::ALL));
     frame.render_widget(footer, chunks[2]);
+}
+
+fn draw_dashboard(frame: &mut ratatui::Frame<'_>, data: &DashboardData) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(7),
+            Constraint::Min(8),
+            Constraint::Length(3),
+        ])
+        .split(frame.area());
+
+    let error_rate = if data.summary.total_commands == 0 {
+        0.0
+    } else {
+        (data.summary.failed_commands as f64 / data.summary.total_commands as f64) * 100.0
+    };
+    let header = Paragraph::new(format!(
+        "Total: {}\nSuccess: {}\nFailed: {}\nError rate: {:.1}%\nPeak hour: {}",
+        data.summary.total_commands,
+        data.summary.successful_commands,
+        data.summary.failed_commands,
+        error_rate,
+        data.summary.peak_hour.as_deref().unwrap_or("-")
+    ))
+    .block(Block::default().title("mh dashboard").borders(Borders::ALL));
+    frame.render_widget(header, chunks[0]);
+
+    let body = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(34),
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+        ])
+        .split(chunks[1]);
+
+    frame.render_widget(
+        dashboard_stat_list("Top commands", &data.summary.top_commands),
+        body[0],
+    );
+    frame.render_widget(dashboard_risk_list(&data.risky), body[1]);
+    frame.render_widget(
+        dashboard_stat_list("Environments", &data.environments),
+        body[2],
+    );
+
+    let footer = Paragraph::new("q/Esc exit")
+        .block(Block::default().title("Controls").borders(Borders::ALL));
+    frame.render_widget(footer, chunks[2]);
+}
+
+fn dashboard_stat_list(title: &'static str, entries: &[StatEntry]) -> List<'static> {
+    let items = if entries.is_empty() {
+        vec![ListItem::new(Line::from(vec![Span::raw("-")]))]
+    } else {
+        entries
+            .iter()
+            .map(|entry| {
+                ListItem::new(Line::from(vec![Span::raw(format!(
+                    "{:>5}  {}",
+                    entry.count, entry.label
+                ))]))
+            })
+            .collect()
+    };
+    List::new(items).block(Block::default().title(title).borders(Borders::ALL))
+}
+
+fn dashboard_risk_list(rows: &[CommandRow]) -> List<'static> {
+    let items = if rows.is_empty() {
+        vec![ListItem::new(Line::from(vec![Span::raw(
+            "No risky recent commands",
+        )]))]
+    } else {
+        rows.iter()
+            .map(|row| {
+                let level = risk::assess_command(&row.command)
+                    .map(|assessment| risk_label(assessment.level))
+                    .unwrap_or("-");
+                ListItem::new(Line::from(vec![Span::raw(format!(
+                    "{:<8} {:<5} {}",
+                    level, row.id, row.command
+                ))]))
+            })
+            .collect()
+    };
+    List::new(items).block(Block::default().title("Risk").borders(Borders::ALL))
+}
+
+fn risk_label(level: RiskLevel) -> &'static str {
+    match level {
+        RiskLevel::Critical => "critical",
+        RiskLevel::High => "high",
+        RiskLevel::Medium => "medium",
+    }
 }
 
 fn list_item(row: &CommandRow) -> ListItem<'static> {

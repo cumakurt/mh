@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="321" height="632" role="img">
+  <title>mh command output</title>
+  <rect width="100%" height="100%" rx="8" fill="#101418"/>
+  <rect x="0.5" y="0.5" width="320" height="631" rx="8" fill="none" stroke="#2f3b45"/>
+  <g font-family="JetBrains Mono, Fira Code, Menlo, Consolas, monospace" font-size="14" xml:space="preserve">
+  <text x="18" y="30" fill="#8fd694">$ mh stats --top 5</text>
+  <text x="18" y="50" fill="#d8dee9">Period              : all time</text>
+  <text x="18" y="70" fill="#d8dee9">Total commands      : 6</text>
+  <text x="18" y="90" fill="#d8dee9">Successful commands : 5</text>
+  <text x="18" y="110" fill="#d8dee9">Failed commands     : 1</text>
+  <text x="18" y="130" fill="#d8dee9">Error rate          : 16.7%</text>
+  <text x="18" y="150" fill="#d8dee9">Average duration    : 1102.8 ms</text>
+  <text x="18" y="170" fill="#d8dee9">Longest duration    : 5400 ms</text>
+  <text x="18" y="190" fill="#d8dee9">Peak hour           : 18:00</text>
+  <text x="18" y="210" fill="#d8dee9"></text>
+  <text x="18" y="230" fill="#d8dee9">Top commands</text>
+  <text x="18" y="250" fill="#d8dee9">       1  curl https://example.com</text>
+  <text x="18" y="270" fill="#d8dee9">       1  docker ps -a</text>
+  <text x="18" y="290" fill="#d8dee9">       1  git status</text>
+  <text x="18" y="310" fill="#d8dee9">       1  kubectl get pods</text>
+  <text x="18" y="330" fill="#d8dee9">       1  pytest tests/unit</text>
+  <text x="18" y="350" fill="#d8dee9"></text>
+  <text x="18" y="370" fill="#d8dee9">Top directories</text>
+  <text x="18" y="390" fill="#d8dee9">       6  /tmp/demo</text>
+  <text x="18" y="410" fill="#d8dee9"></text>
+  <text x="18" y="430" fill="#d8dee9">Error-prone commands</text>
+  <text x="18" y="450" fill="#d8dee9">       1  pytest tests/unit</text>
+  <text x="18" y="470" fill="#d8dee9"></text>
+  <text x="18" y="490" fill="#d8dee9">Shells</text>
+  <text x="18" y="510" fill="#d8dee9">       6  zsh</text>
+  <text x="18" y="530" fill="#d8dee9"></text>
+  <text x="18" y="550" fill="#d8dee9">Categories</text>
+  <text x="18" y="570" fill="#d8dee9">       1  docker</text>
+  <text x="18" y="590" fill="#d8dee9">       1  git</text>
+  <text x="18" y="610" fill="#d8dee9">       1  network</text>
+  </g>
+</svg>

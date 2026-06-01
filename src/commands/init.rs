@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 use dirs::home_dir;
@@ -9,11 +9,13 @@ use crate::config::ensure_directory;
 use crate::shell::{self, hooks, resolve_config_path};
 
 pub fn run(args: InitArgs) -> Result<()> {
-    let shell = shell::resolve_init_shell(args.shell).map_err(anyhow::Error::msg)?;
+    let should_install = args.install || args.shell.is_none();
+    let shell_arg = args.shell.unwrap_or(ShellKind::Auto);
+    let shell = shell::resolve_init_shell(shell_arg).map_err(anyhow::Error::msg)?;
     if args.repair {
         return repair(shell);
     }
-    if args.install {
+    if should_install {
         return install(shell);
     }
 
@@ -35,6 +37,7 @@ fn install(shell: ShellKind) -> Result<()> {
                 "mh shell integration is already installed in {}",
                 config_path.display()
             );
+            print_activation_hint(shell, &config_path);
             return Ok(());
         }
         return repair(shell);
@@ -72,10 +75,7 @@ fn install(shell: ShellKind) -> Result<()> {
         "Installed mh shell integration into {}",
         config_path.display()
     );
-    println!(
-        "Restart your shell or run: source {}",
-        config_path.display()
-    );
+    print_activation_hint(shell, &config_path);
     Ok(())
 }
 
@@ -96,6 +96,7 @@ fn repair(shell: ShellKind) -> Result<()> {
     let duplicates_before = hooks::duplicate_hook_count(shell, &original);
     if !report.changed() && duplicates_before == 0 {
         println!("No shell hook repairs needed in {}", config_path.display());
+        print_activation_hint(shell, &config_path);
         return Ok(());
     }
 
@@ -108,6 +109,7 @@ fn repair(shell: ShellKind) -> Result<()> {
             );
         }
         println!("No shell hook repairs needed in {}", config_path.display());
+        print_activation_hint(shell, &config_path);
         return Ok(());
     }
 
@@ -126,11 +128,37 @@ fn repair(shell: ShellKind) -> Result<()> {
             report.removed_duplicate_hook_lines
         );
     }
-    println!(
-        "Restart your shell or run: source {}",
-        config_path.display()
-    );
+    print_activation_hint(shell, &config_path);
     Ok(())
+}
+
+fn print_activation_hint(shell: ShellKind, config_path: &Path) {
+    println!("New shell sessions will load mh automatically.");
+    println!(
+        "To activate mh in this terminal, run: {}",
+        activation_command(shell, config_path)
+    );
+}
+
+fn activation_command(shell: ShellKind, config_path: &Path) -> String {
+    match shell {
+        ShellKind::Bash | ShellKind::Zsh | ShellKind::Fish | ShellKind::Nushell => {
+            format!("source {}", shell_quote(config_path))
+        }
+        ShellKind::Sh => format!(". {}", shell_quote(config_path)),
+        ShellKind::Pwsh => format!(". {}", pwsh_quote(config_path)),
+        ShellKind::Auto => unreachable!("resolved before activation command"),
+    }
+}
+
+fn shell_quote(path: &Path) -> String {
+    let value = path.to_string_lossy();
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
+fn pwsh_quote(path: &Path) -> String {
+    let value = path.to_string_lossy();
+    format!("'{}'", value.replace('\'', "''"))
 }
 
 fn backup_and_write(config_path: &PathBuf, content: &str) -> Result<()> {
@@ -244,5 +272,20 @@ mod tests {
         std::fs::write(&profile, "# login shell\n").expect("write");
         let resolved = crate::shell::resolve_config_path(ShellKind::Bash, home.path());
         assert_eq!(resolved, profile);
+    }
+
+    #[test]
+    fn activation_command_quotes_shell_paths() {
+        let path = PathBuf::from("/tmp/mh test/.zshrc");
+        assert_eq!(
+            activation_command(ShellKind::Zsh, &path),
+            "source '/tmp/mh test/.zshrc'"
+        );
+
+        let sh_path = PathBuf::from("/tmp/mh test/.profile");
+        assert_eq!(
+            activation_command(ShellKind::Sh, &sh_path),
+            ". '/tmp/mh test/.profile'"
+        );
     }
 }

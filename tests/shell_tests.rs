@@ -13,6 +13,8 @@ fn bash_integration_sets_git_detect_skip_default() {
 fn bash_integration_enforces_policy_before_accept() {
     let integration = shell::integration(ShellKind::Bash);
     assert!(integration.contains("mh policy check"));
+    assert!(integration.contains("mh policy check \"$1\" --cwd \"$PWD\" --quiet"));
+    assert!(!integration.contains("policy check --command"));
     assert!(integration.contains("__mh_dispatch_accept"));
 }
 
@@ -21,6 +23,15 @@ fn zsh_integration_enforces_policy_on_accept_line() {
     let integration = shell::integration(ShellKind::Zsh);
     assert!(integration.contains("_mh_accept_line"));
     assert!(integration.contains("mh policy check"));
+    assert!(integration.contains("mh policy check \"$1\" --cwd \"$PWD\" --quiet"));
+    assert!(!integration.contains("policy check --command"));
+}
+
+#[test]
+fn fish_integration_uses_valid_policy_check_cli() {
+    let integration = shell::integration(ShellKind::Fish);
+    assert!(integration.contains("mh policy check \"$cmd\" --cwd \"$PWD\" --quiet"));
+    assert!(!integration.contains("policy check --command"));
 }
 
 #[test]
@@ -33,14 +44,8 @@ fn classifies_linux_shell_paths() {
         detect::executable_kind(Path::new("/bin/rbash")),
         ShellExecutable::BashCompatible
     ));
-    assert_eq!(
-        detect::kind_from_path("/usr/bin/dash"),
-        Some(ShellKind::Sh)
-    );
-    assert_eq!(
-        detect::kind_from_path("/bin/zsh"),
-        Some(ShellKind::Zsh)
-    );
+    assert_eq!(detect::kind_from_path("/usr/bin/dash"), Some(ShellKind::Sh));
+    assert_eq!(detect::kind_from_path("/bin/zsh"), Some(ShellKind::Zsh));
     assert_eq!(
         detect::executable_kind(Path::new("/usr/bin/tmux")),
         ShellExecutable::Multiplexer

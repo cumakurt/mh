@@ -1820,6 +1820,7 @@ dependencies = [
  "csv",
  "dirs",
  "fuzzy-matcher",
+ "hmac",
  "hostname",
  "keyring",
  "libc",

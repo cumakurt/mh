@@ -577,9 +577,8 @@ pub fn database_path_warnings(path: &Path) -> Vec<String> {
                     "database path is under /home/{owner} but current user is {current_user}"
                 ));
             } else if path_str.starts_with("/root/") && current_uid != 0 {
-                warnings.push(
-                    "database path is under /root but current user is not root".to_string(),
-                );
+                warnings
+                    .push("database path is under /root but current user is not root".to_string());
             }
         }
     }
@@ -1072,9 +1071,7 @@ mod tests {
         let path = PathBuf::from(format!("/home/{foreign}/.local/share/mh/history.db"));
         let warnings = database_path_warnings(&path);
         assert!(
-            warnings
-                .iter()
-                .any(|warning| warning.contains(foreign)),
+            warnings.iter().any(|warning| warning.contains(foreign)),
             "expected foreign home warning for {foreign}, got: {warnings:?}"
         );
     }

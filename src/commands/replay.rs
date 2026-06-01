@@ -96,36 +96,52 @@ pub fn run(args: ReplayArgs) -> Result<()> {
         bail!("refusing to replay command in non-interactive mode; pass --yes to confirm");
     }
 
-    if interactive && !skip_confirm && !confirm(&format!("Run command {}?", row.id))? {
-        println!("Replay cancelled");
-        return Ok(());
-    }
-
     for warning in security::stored_command_execution_warnings(&row.command, row.is_masked)? {
         eprintln!("Warning: {warning}");
     }
 
+    let cwd = row.cwd.as_deref().map(Path::new);
+    let mut critical_risk = false;
     if let Some(assessment) = risk::assess_command(&row.command) {
         eprintln!(
             "Warning: {} risk command ({})",
             assessment.level.label(),
             assessment.description
         );
-        if assessment.level == RiskLevel::Critical && !skip_confirm {
-            if interactive {
-                if !confirm(&format!("Critical risk command {}. Run anyway?", row.id))? {
-                    println!("Replay cancelled");
-                    return Ok(());
+        critical_risk = assessment.level == RiskLevel::Critical;
+        if !args.no_risk_guidance {
+            let guidance = risk::execution_guidance(&row.command);
+            if let Some(alternative) = guidance.safer_alternative.as_deref() {
+                eprintln!("Safer alternative: {alternative}");
+            }
+            if let Some(preview) = guidance.preview_command.as_deref() {
+                eprintln!("Preview command: {preview}");
+                if args.risk_preview {
+                    eprintln!("Running risk preview before replay...");
+                    let preview_status = execute_shell_command(preview, cwd)?;
+                    if !preview_status.success() {
+                        bail!("risk preview exited with status {preview_status}");
+                    }
                 }
-            } else {
-                bail!(
-                    "refusing to replay critical-risk command in non-interactive mode; pass --yes to confirm"
-                );
+            }
+            for item in guidance.checklist {
+                eprintln!("Review: {item}");
             }
         }
     }
 
-    let cwd = row.cwd.as_deref().map(Path::new);
+    if interactive && !skip_confirm {
+        let prompt = if critical_risk {
+            format!("Critical risk command {}. Run anyway?", row.id)
+        } else {
+            format!("Run command {}?", row.id)
+        };
+        if !confirm(&prompt)? {
+            println!("Replay cancelled");
+            return Ok(());
+        }
+    }
+
     let status = execute_shell_command(&row.command, cwd)?;
     if config.security.audit_log {
         let audit_row = database.insert_audit_log(

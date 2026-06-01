@@ -80,7 +80,7 @@ __mh_policy_skip() {
 
 __mh_policy_allow() {
   __mh_policy_skip "$1" && return 0
-  command mh policy check --command "$1" --cwd "$PWD" --quiet 2>/dev/null
+  command mh policy check "$1" --cwd "$PWD" --quiet 2>/dev/null
 }
 "#
     };
@@ -308,7 +308,7 @@ function __mh_policy_allow_fish -a cmd
     case '' '__mh_*' '_mh_*' 'mh *' 'command mh *' '*/mh *'
       return 0
   end
-  command mh policy check --command "$cmd" --cwd "$PWD" --quiet 2>/dev/null
+  command mh policy check "$cmd" --cwd "$PWD" --quiet 2>/dev/null
 end
 
 function mh_preexec --on-event fish_preexec

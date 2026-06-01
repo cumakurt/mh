@@ -47,6 +47,56 @@ fn maybe_enforce_runs_when_near_limit() {
     assert_eq!(database.count_commands().expect("count"), 2);
 }
 
+#[test]
+fn retention_purge_deletes_old_rows_without_legal_hold() {
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let mut config = AppConfig::default();
+    config.database.path = temp_dir
+        .path()
+        .join("history.db")
+        .to_string_lossy()
+        .to_string();
+    config.retention.enabled = true;
+    config.retention.retention_days = 30;
+    config.retention.respect_legal_hold = true;
+
+    let database = Database::open(&config).expect("open database");
+    database
+        .insert_command(&CommandRecord {
+            command: "old command".to_string(),
+            command_hash: "hash-old".to_string(),
+            cwd: None,
+            shell: None,
+            username: Some("tester".to_string()),
+            hostname: None,
+            exit_code: Some(0),
+            duration_ms: None,
+            started_at: "2020-01-01T00:00:00Z".to_string(),
+            finished_at: None,
+            session_id: Some("sess-old".to_string()),
+            tty: None,
+            is_ssh: false,
+            is_root: false,
+            git_repo: None,
+            git_branch: None,
+            git_commit: None,
+            category: None,
+            env_context: None,
+            is_pinned: false,
+            is_masked: false,
+            tags: vec![],
+            environment_tier: None,
+        })
+        .expect("insert old");
+    insert_row(&database, "recent");
+
+    let deleted = database.retention_purge(30, true).expect("purge");
+    assert_eq!(deleted, 1);
+    assert_eq!(database.count_commands().expect("count"), 1);
+    let remaining = database.get_command(2).expect("recent row");
+    assert_eq!(remaining.command, "recent");
+}
+
 fn insert_row(database: &Database, command: &str) {
     database
         .insert_command(&CommandRecord {

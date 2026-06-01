@@ -126,6 +126,4 @@ impl Database {
 
         Ok(updated)
     }
-
-
 }

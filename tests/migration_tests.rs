@@ -26,7 +26,9 @@ fn enterprise_migration_columns_are_idempotent() {
 
     let database = Database::open_path(path).expect("reopen should succeed");
     assert_eq!(
-        database.schema_version().expect("schema version after reopen"),
+        database
+            .schema_version()
+            .expect("schema version after reopen"),
         EXPECTED_SCHEMA_VERSION
     );
 }

@@ -32,7 +32,10 @@ max_entries = 1000
         ("XDG_RUNTIME_DIR", std::env::var("XDG_RUNTIME_DIR").ok()),
         ("XDG_CONFIG_HOME", std::env::var("XDG_CONFIG_HOME").ok()),
         ("MH_CONFIG", std::env::var("MH_CONFIG").ok()),
-        ("MH_CONFIG_NO_CACHE", std::env::var("MH_CONFIG_NO_CACHE").ok()),
+        (
+            "MH_CONFIG_NO_CACHE",
+            std::env::var("MH_CONFIG_NO_CACHE").ok(),
+        ),
     ];
     unsafe {
         std::env::set_var("XDG_RUNTIME_DIR", dir.path());
@@ -76,7 +79,10 @@ max_entries = 1000
     .expect("record");
     assert!(record.ok, "record failed: {:?}", record.error);
 
-    assert!(db_path.exists(), "daemon should write to configured database");
+    assert!(
+        db_path.exists(),
+        "daemon should write to configured database"
+    );
     let config = mh::config::AppConfig::load().expect("load config");
     let database = mh::db::Database::open(&config).expect("open db");
     assert_eq!(

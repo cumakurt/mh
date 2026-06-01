@@ -1,4 +1,5 @@
 //! Shared integration-test helpers for environment isolation.
+#![allow(dead_code)]
 
 use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
@@ -111,8 +112,7 @@ impl EnvGuard {
 
     pub fn use_isolated_config(&self, temp_dir: &tempfile::TempDir) {
         let config_path = temp_dir.path().join("mh").join("config.toml");
-        std::fs::create_dir_all(config_path.parent().expect("config parent"))
-            .expect("config dir");
+        std::fs::create_dir_all(config_path.parent().expect("config parent")).expect("config dir");
         AppConfig::default()
             .write_to_path(&config_path)
             .expect("write config");

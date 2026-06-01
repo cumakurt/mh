@@ -91,6 +91,4 @@ impl Database {
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
-
-
 }

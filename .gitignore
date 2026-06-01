@@ -23,6 +23,7 @@ CachedData/
 CachedProfilesData/
 Code Cache/
 Local Storage/
+Session Storage/
 Shared Dictionary/
 blob_storage/
 Backups/

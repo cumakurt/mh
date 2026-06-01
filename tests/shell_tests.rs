@@ -142,3 +142,54 @@ fn bash_integration_supports_policy_verbose_mode() {
     let integration = shell::integration(ShellKind::Bash);
     assert!(integration.contains("MH_POLICY_VERBOSE"));
 }
+
+#[test]
+fn bash_integration_guards_against_duplicate_session_install() {
+    let integration = shell::integration(ShellKind::Bash);
+    assert!(integration.contains("__MH_BASH_INTEGRATION_LOADED"));
+}
+
+#[test]
+fn zsh_integration_guards_against_duplicate_session_install() {
+    let integration = shell::integration(ShellKind::Zsh);
+    assert!(integration.contains("__MH_ZSH_INTEGRATION_LOADED"));
+}
+
+#[test]
+fn fish_integration_guards_against_duplicate_session_install() {
+    let integration = shell::integration(ShellKind::Fish);
+    assert!(integration.contains("__mh_fish_integration_loaded"));
+}
+
+#[test]
+fn zsh_integration_supports_kali_gnu_date_fallback() {
+    let integration = shell::integration(ShellKind::Zsh);
+    assert!(integration.contains("date +%s%3N"));
+    assert!(integration.contains("python3"));
+    assert!(integration.contains("perl"));
+}
+
+#[test]
+fn zsh_integration_uses_preexec_not_debug_trap() {
+    let integration = shell::integration(ShellKind::Zsh);
+    assert!(integration.contains("add-zsh-hook preexec _mh_preexec"));
+    assert!(!integration.contains("trap '__mh_preexec' DEBUG"));
+}
+
+#[test]
+fn zsh_integration_exports_session_and_skip_git_detect() {
+    let integration = shell::integration(ShellKind::Zsh);
+    assert!(integration.contains("MH_SESSION_ID"));
+    assert!(integration.contains("MH_SKIP_GIT_DETECT:=1"));
+}
+
+#[test]
+fn record_call_sites_do_not_override_verbose_helper_redirection() {
+    for shell_kind in [ShellKind::Bash, ShellKind::Zsh, ShellKind::Fish] {
+        let integration = shell::integration(shell_kind);
+        assert!(
+            !integration.contains(r#"--session-id "$MH_SESSION_ID" >/dev/null 2>&1"#),
+            "record call site should let __mh_record handle quiet/verbose redirection"
+        );
+    }
+}

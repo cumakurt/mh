@@ -169,7 +169,10 @@ mod tests {
         let content = "add-zsh-hook preexec _mh_preexec\nadd-zsh-hook preexec _mh_preexec\n";
         let (repaired, report) = repair_content(content, ShellKind::Zsh);
         assert_eq!(report.removed_duplicate_hook_lines, 1);
-        assert_eq!(repaired.matches("add-zsh-hook preexec _mh_preexec").count(), 1);
+        assert_eq!(
+            repaired.matches("add-zsh-hook preexec _mh_preexec").count(),
+            1
+        );
     }
 
     #[test]

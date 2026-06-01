@@ -11,13 +11,13 @@ use crate::classifier;
 use crate::config::AppConfig;
 use crate::db::Database;
 use crate::environment;
+use crate::errors::MhError;
 use crate::git_detect::{self, GitContext};
 use crate::identity;
 use crate::models::CommandRecord;
 use crate::policy::PolicyAction;
 use crate::record_engines;
 use crate::risk;
-use crate::errors::MhError;
 use crate::security::{self, SecurityAction};
 
 /// Payload for recording a command (CLI, daemon, and tests).
@@ -152,9 +152,9 @@ pub fn execute_with_options(
     let git = match &options.precomputed_git {
         Some(context) => context.clone(),
         None if options.skip_git_detect => None,
-        None if options.use_git_cache => {
-            cwd.as_deref().and_then(git_detect::detect_git_context_cached)
-        }
+        None if options.use_git_cache => cwd
+            .as_deref()
+            .and_then(git_detect::detect_git_context_cached),
         None => cwd.as_deref().and_then(git_detect::detect_git_context),
     };
     let environment_tier = Some(environment::classify_label(
@@ -164,8 +164,9 @@ pub fn execute_with_options(
         git.as_ref().map(|context| context.repo.as_str()),
     ));
 
-    let started_at = crate::timestamp::parse_optional_rfc3339("started_at", payload.started_at.as_ref())?
-        .unwrap_or_else(now_rfc3339);
+    let started_at =
+        crate::timestamp::parse_optional_rfc3339("started_at", payload.started_at.as_ref())?
+            .unwrap_or_else(now_rfc3339);
     let finished_at =
         crate::timestamp::parse_optional_rfc3339("finished_at", payload.finished_at.as_ref())?;
 
@@ -239,7 +240,7 @@ pub fn execute_with_options(
         username,
         hostname,
         exit_code: payload.exit_code,
-        duration_ms: payload.duration_ms,
+        duration_ms: payload.duration_ms.map(|duration| duration.max(0)),
         started_at,
         finished_at,
         session_id: payload
@@ -262,7 +263,8 @@ pub fn execute_with_options(
     };
 
     let inserted_id = if config.history.ignore_duplicates {
-        database.insert_command_unless_recent_duplicate(&record, config.history.dedupe_window_seconds)?
+        database
+            .insert_command_unless_recent_duplicate(&record, config.history.dedupe_window_seconds)?
     } else {
         Some(database.insert_command(&record)?)
     };

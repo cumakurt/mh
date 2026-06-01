@@ -156,7 +156,6 @@ impl Database {
             }
         }
     }
-
 }
 
 #[cfg(test)]

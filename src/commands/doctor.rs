@@ -1,35 +1,70 @@
+use std::cell::RefCell;
+use std::collections::hash_map::DefaultHasher;
 use std::env;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
-
-use std::cell::RefCell;
+use serde::{Deserialize, Serialize};
 
 use crate::break_glass;
 use crate::cli::{DoctorArgs, ShellKind};
 use crate::config::{AppConfig, config_path, has_restricted_permissions, private_mode_path};
 use crate::daemon::record_pid_path;
-use crate::shell::{config_candidates, hooks, resolve_config_path};
 use crate::db::{Database, EXPECTED_SCHEMA_VERSION};
 use crate::output::styling::{StatusLevel, Styler};
 use crate::security;
+use crate::shell::{config_candidates, hooks, resolve_config_path};
 
 const BEGIN_MARKER: &str = hooks::BEGIN_MARKER;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DoctorReport {
+    pub status: String,
+    pub warning_count: usize,
+    pub checks: Vec<DoctorCheck>,
+    pub summary: DoctorSummary,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DoctorCheck {
+    pub code: String,
+    pub level: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DoctorSummary {
+    pub mh_version: String,
+    pub config_path: Option<String>,
+    pub database_path: Option<String>,
+    pub schema_version: Option<i64>,
+    pub command_count: Option<i64>,
+    pub daemon_running: Option<bool>,
+    pub private_mode: Option<bool>,
+    pub strict: bool,
+}
+
 thread_local! {
     static WARNING_COUNT: RefCell<usize> = const { RefCell::new(0) };
+    static JSON_MODE: RefCell<bool> = const { RefCell::new(false) };
+    static CHECKS: RefCell<Vec<DoctorCheck>> = const { RefCell::new(Vec::new()) };
+    static SUMMARY: RefCell<DoctorSummary> = RefCell::new(DoctorSummary::default());
 }
 
 pub fn run(args: DoctorArgs) -> Result<()> {
-    WARNING_COUNT.with(|counter| *counter.borrow_mut() = 0);
-
+    reset_doctor_state(&args);
     let cfg_path = config_path();
-    print_env_overrides(&Styler::from_config(&AppConfig::default()));
+    let styler = if args.json {
+        Styler::from_display_config(false)
+    } else {
+        Styler::from_config(&AppConfig::default())
+    };
+    print_env_overrides(&styler);
     let config = match AppConfig::load() {
         Ok(config) => config,
         Err(error) => {
-            let styler = Styler::from_config(&AppConfig::default());
             say(
                 &styler,
                 StatusLevel::Warn,
@@ -41,14 +76,24 @@ pub fn run(args: DoctorArgs) -> Result<()> {
                 format!(
                     "Fix or remove {} then rerun {}",
                     cfg_path.display(),
-                    styler.accent("mh doctor")
+                    if args.json {
+                        "mh doctor".to_string()
+                    } else {
+                        styler.accent("mh doctor")
+                    }
                 ),
             );
+            set_summary_config_path(&cfg_path);
             check_env_override_paths(&styler);
-            return finish(args.strict);
+            return finish(&args);
         }
     };
-    let styler = Styler::from_config(&config);
+    let styler = if args.json {
+        Styler::from_display_config(false)
+    } else {
+        Styler::from_config(&config)
+    };
+    set_summary_config_path(&cfg_path);
 
     say(
         &styler,
@@ -67,7 +112,11 @@ pub fn run(args: DoctorArgs) -> Result<()> {
                 format!("Database could not be opened: {error:#}"),
             );
             check_config_directory_permissions(&styler, &cfg_path);
-            check_file_permissions(&styler, &cfg_path, &config.database_path().unwrap_or_default());
+            check_file_permissions(
+                &styler,
+                &cfg_path,
+                &config.database_path().unwrap_or_default(),
+            );
             check_private_mode(&styler, &config);
             check_shell_hook_diagnostics(&styler, &config);
             check_legacy_ignore_patterns(&styler, &config);
@@ -79,10 +128,11 @@ pub fn run(args: DoctorArgs) -> Result<()> {
             print_shell_info(&styler);
             check_shell_integration(&styler);
             check_binary_in_path(&styler);
-            return finish(args.strict);
+            return finish(&args);
         }
     };
     let db_path = database.path();
+    set_summary_database(&database);
     say(
         &styler,
         StatusLevel::Ok,
@@ -112,13 +162,82 @@ pub fn run(args: DoctorArgs) -> Result<()> {
     check_shell_integration(&styler);
     check_binary_in_path(&styler);
 
-    finish(args.strict)
+    finish(&args)
 }
 
-fn finish(strict: bool) -> Result<()> {
-    let warnings = WARNING_COUNT.with(|counter| *counter.borrow());
-    if strict && warnings > 0 {
-        anyhow::bail!("doctor reported {warnings} warning(s); fix the issues above or rerun without --strict");
+fn reset_doctor_state(args: &DoctorArgs) {
+    WARNING_COUNT.with(|counter| *counter.borrow_mut() = 0);
+    JSON_MODE.with(|mode| *mode.borrow_mut() = args.json);
+    CHECKS.with(|checks| checks.borrow_mut().clear());
+    SUMMARY.with(|summary| {
+        *summary.borrow_mut() = DoctorSummary {
+            mh_version: env!("CARGO_PKG_VERSION").to_string(),
+            strict: args.strict,
+            ..DoctorSummary::default()
+        };
+    });
+}
+
+fn set_summary_config_path(path: &Path) {
+    SUMMARY.with(|summary| {
+        summary.borrow_mut().config_path = Some(path.display().to_string());
+    });
+}
+
+fn set_summary_database(database: &Database) {
+    SUMMARY.with(|summary| {
+        let mut entry = summary.borrow_mut();
+        entry.database_path = Some(database.path().display().to_string());
+        entry.schema_version = database.schema_version().ok();
+        entry.command_count = database.count_commands().ok();
+    });
+}
+
+fn set_summary_private_mode(enabled: bool) {
+    SUMMARY.with(|summary| summary.borrow_mut().private_mode = Some(enabled));
+}
+
+fn set_summary_daemon_running(running: bool) {
+    SUMMARY.with(|summary| summary.borrow_mut().daemon_running = Some(running));
+}
+
+/// Returns the report from the most recent `run` in this thread (checks are accumulated in TLS).
+pub fn current_report() -> DoctorReport {
+    build_report()
+}
+
+fn build_report() -> DoctorReport {
+    let warning_count = WARNING_COUNT.with(|counter| *counter.borrow());
+    let checks = CHECKS.with(|checks| checks.borrow().clone());
+    let summary = SUMMARY.with(|summary| summary.borrow().clone());
+    let status = if warning_count > 0 {
+        "warn"
+    } else if checks.iter().any(|check| check.level == "error") {
+        "error"
+    } else {
+        "ok"
+    };
+    DoctorReport {
+        status: status.to_string(),
+        warning_count,
+        checks,
+        summary,
+    }
+}
+
+fn finish(args: &DoctorArgs) -> Result<()> {
+    let report = build_report();
+    if args.json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&report).context("failed to serialize doctor report")?
+        );
+    }
+    if args.strict && report.warning_count > 0 {
+        anyhow::bail!(
+            "doctor reported {} warning(s); fix the issues above or rerun without --strict",
+            report.warning_count
+        );
     }
     Ok(())
 }
@@ -132,11 +251,7 @@ fn print_env_overrides(styler: &Styler) {
         );
     }
     if let Ok(path) = env::var("MH_DB") {
-        say(
-            styler,
-            StatusLevel::Info,
-            format!("MH_DB override: {path}"),
-        );
+        say(styler, StatusLevel::Info, format!("MH_DB override: {path}"));
     }
     if env::var("MH_NO_DAEMON").is_ok() {
         say(
@@ -148,10 +263,35 @@ fn print_env_overrides(styler: &Styler) {
 }
 
 fn say(styler: &Styler, level: StatusLevel, message: impl AsRef<str>) {
+    let message = message.as_ref();
     if matches!(level, StatusLevel::Warn) {
         WARNING_COUNT.with(|counter| *counter.borrow_mut() += 1);
     }
-    println!("{}", styler.status(level, message));
+    CHECKS.with(|checks| {
+        checks.borrow_mut().push(DoctorCheck {
+            code: check_code(message),
+            level: status_level_name(level).to_string(),
+            message: message.to_string(),
+        });
+    });
+    if !JSON_MODE.with(|mode| *mode.borrow()) {
+        println!("{}", styler.status(level, message));
+    }
+}
+
+fn status_level_name(level: StatusLevel) -> &'static str {
+    match level {
+        StatusLevel::Ok => "ok",
+        StatusLevel::Warn => "warn",
+        StatusLevel::Info => "info",
+        StatusLevel::Error => "error",
+    }
+}
+
+fn check_code(message: &str) -> String {
+    let mut hasher = DefaultHasher::new();
+    message.hash(&mut hasher);
+    format!("check_{:016x}", hasher.finish())
 }
 
 fn check_database_size(styler: &Styler, config: &AppConfig, db_path: &Path) {
@@ -321,7 +461,7 @@ fn check_symlinks(styler: &Styler, config_path: &Path, db_path: &Path) {
 
 #[cfg(unix)]
 fn path_is_symlink(path: &Path) -> bool {
-    fs::metadata(path)
+    fs::symlink_metadata(path)
         .map(|meta| meta.file_type().is_symlink())
         .unwrap_or(false)
 }
@@ -431,7 +571,9 @@ fn check_vault_passphrase_exposure(styler: &Styler) {
 }
 
 fn check_private_mode(styler: &Styler, config: &AppConfig) {
-    if security::private_mode_enabled(config) {
+    let enabled = security::private_mode_enabled(config);
+    set_summary_private_mode(enabled);
+    if enabled {
         say(
             styler,
             StatusLevel::Warn,
@@ -496,6 +638,7 @@ fn check_record_daemon(styler: &Styler) {
     let socket_path = crate::daemon::record_socket_path();
     match crate::daemon::daemon_status() {
         Ok(status) if status.running => {
+            set_summary_daemon_running(true);
             let pid = status
                 .pid
                 .map(|value| value.to_string())
@@ -511,7 +654,9 @@ fn check_record_daemon(styler: &Styler) {
             check_daemon_socket_permissions(styler, &status.socket_path);
             check_daemon_pid_permissions(styler);
         }
-        Ok(status) if status.socket_path.exists() && status.pid.is_some_and(|pid| !pid_is_alive(pid)) => {
+        Ok(status)
+            if status.socket_path.exists() && status.pid.is_some_and(|pid| !pid_is_alive(pid)) =>
+        {
             say(
                 styler,
                 StatusLevel::Warn,
@@ -534,6 +679,7 @@ fn check_record_daemon(styler: &Styler) {
             );
         }
         Ok(status) => {
+            set_summary_daemon_running(false);
             say(
                 styler,
                 StatusLevel::Info,
@@ -575,9 +721,10 @@ fn print_sync_status(styler: &Styler, config: &AppConfig) {
     } else {
         styler.accent(&config.sync.server_url)
     };
-    println!(
-        "{}",
-        styler.label_value("Sync", format!("{state} ({server})"))
+    say(
+        styler,
+        StatusLevel::Info,
+        styler.label_value("Sync", format!("{state} ({server})")),
     );
 }
 
@@ -592,9 +739,10 @@ fn print_vault_status(styler: &Styler, config: &AppConfig) {
     } else {
         styler.muted("disabled")
     };
-    println!(
-        "{}",
-        styler.label_value("Vault config", format!("{vault} (keyring: {keyring})"))
+    say(
+        styler,
+        StatusLevel::Info,
+        styler.label_value("Vault config", format!("{vault} (keyring: {keyring})")),
     );
 }
 
@@ -873,7 +1021,11 @@ fn check_env_override_paths(styler: &Styler) {
 
 fn validate_config_engines(styler: &Styler, config: &AppConfig) {
     match crate::security::SecurityEngine::from_config(config) {
-        Ok(_) => say(styler, StatusLevel::Ok, "Security ignore patterns are valid"),
+        Ok(_) => say(
+            styler,
+            StatusLevel::Ok,
+            "Security ignore patterns are valid",
+        ),
         Err(error) => say(
             styler,
             StatusLevel::Warn,
@@ -991,7 +1143,23 @@ mod tests {
             "default policy includes production deny rules"
         );
         config.policy.default_action = "allow".to_string();
-        config.policy.rules.retain(|rule| !rule.action.eq_ignore_ascii_case("deny"));
+        config
+            .policy
+            .rules
+            .retain(|rule| !rule.action.eq_ignore_ascii_case("deny"));
         assert!(!policy_has_deny_rules(&config));
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn detects_symlink_without_following_target() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let target = temp_dir.path().join("target.db");
+        let link = temp_dir.path().join("history.db");
+        std::fs::write(&target, "not sqlite").expect("target");
+        std::os::unix::fs::symlink(&target, &link).expect("symlink");
+
+        assert!(path_is_symlink(&link));
+        assert!(!path_is_symlink(&target));
     }
 }

@@ -65,6 +65,30 @@ fn install_writes_managed_block_into_new_zshrc() {
 }
 
 #[test]
+#[cfg(unix)]
+fn install_does_not_chmod_existing_home_directory() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let home = IsolatedHome::new();
+    std::fs::set_permissions(home.path(), std::fs::Permissions::from_mode(0o755))
+        .expect("chmod home");
+
+    init::run(InitArgs {
+        shell: ShellKind::Zsh,
+        install: true,
+        repair: false,
+    })
+    .expect("install should succeed");
+
+    let mode = std::fs::metadata(home.path())
+        .expect("home metadata")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o755);
+}
+
+#[test]
 fn install_repairs_duplicate_managed_blocks() {
     let home = IsolatedHome::new();
     let zshrc = home.path().join(".zshrc");
@@ -79,7 +103,10 @@ fn install_repairs_duplicate_managed_blocks() {
     .expect("install should repair duplicate managed blocks");
 
     let repaired = std::fs::read_to_string(&zshrc).expect("read zshrc");
-    assert_eq!(repaired.matches("# >>> mh shell integration >>>").count(), 1);
+    assert_eq!(
+        repaired.matches("# >>> mh shell integration >>>").count(),
+        1
+    );
 }
 
 #[test]
@@ -97,7 +124,10 @@ fn repair_removes_duplicate_managed_blocks() {
     .expect("repair should succeed");
 
     let repaired = std::fs::read_to_string(&zshrc).expect("read zshrc");
-    assert_eq!(repaired.matches("# >>> mh shell integration >>>").count(), 1);
+    assert_eq!(
+        repaired.matches("# >>> mh shell integration >>>").count(),
+        1
+    );
 }
 
 #[test]

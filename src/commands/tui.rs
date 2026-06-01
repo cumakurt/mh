@@ -586,10 +586,7 @@ mod tests {
 
     #[test]
     fn navigation_moves_selection() {
-        let mut app = TuiApp::new(
-            vec![row("alpha"), row("beta"), row("gamma")],
-            String::new(),
-        );
+        let mut app = TuiApp::new(vec![row("alpha"), row("beta"), row("gamma")], String::new());
         assert_eq!(app.state.selected(), Some(0));
         app.next();
         assert_eq!(app.state.selected(), Some(1));

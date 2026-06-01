@@ -5,7 +5,7 @@ use anyhow::{Context, Result, bail};
 use dirs::home_dir;
 
 use crate::cli::{InitArgs, ShellKind};
-use crate::config::ensure_private_directory;
+use crate::config::ensure_directory;
 use crate::shell::{self, hooks, resolve_config_path};
 
 pub fn run(args: InitArgs) -> Result<()> {
@@ -23,11 +23,7 @@ pub fn run(args: InitArgs) -> Result<()> {
 fn install(shell: ShellKind) -> Result<()> {
     let config_path = shell_config_path(shell)?;
     if let Some(parent) = config_path.parent() {
-        ensure_private_directory(parent)?;
-    }
-
-    if !config_path.exists() {
-        fs::write(&config_path, "")?;
+        ensure_directory(parent)?;
     }
 
     let original = fs::read_to_string(&config_path).unwrap_or_default();
@@ -178,16 +174,19 @@ fn managed_block(shell: ShellKind) -> String {
             };
             format!(
                 "{}\nif command -v mh >/dev/null 2>&1; then\n  eval \"$(mh init {shell_name})\"\nfi\n{}\n",
-                hooks::BEGIN_MARKER, hooks::END_MARKER
+                hooks::BEGIN_MARKER,
+                hooks::END_MARKER
             )
         }
         ShellKind::Fish => format!(
             "{}\nif command -q mh\n  mh init fish | source\nend\n{}\n",
-            hooks::BEGIN_MARKER, hooks::END_MARKER
+            hooks::BEGIN_MARKER,
+            hooks::END_MARKER
         ),
         ShellKind::Nushell => format!(
             "{}\nif (which mh | is-not-empty) {{\n  (mh init nushell)\n}}\n{}\n",
-            hooks::BEGIN_MARKER, hooks::END_MARKER
+            hooks::BEGIN_MARKER,
+            hooks::END_MARKER
         ),
     }
 }

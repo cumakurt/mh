@@ -3,11 +3,9 @@ pub mod peer;
 pub mod protocol;
 mod server;
 
-pub use client::{is_daemon_available, record_via_daemon, DaemonError};
+pub use client::{DaemonError, is_daemon_available, record_via_daemon};
 pub use protocol::{DaemonRequest, DaemonResponse};
-pub use server::{
-    daemon_status, install_systemd_unit, run_daemon, start_daemon, stop_daemon,
-};
+pub use server::{daemon_status, install_systemd_unit, run_daemon, start_daemon, stop_daemon};
 
 use std::env;
 use std::path::{Path, PathBuf};
@@ -37,7 +35,7 @@ pub fn record_pid_path() -> PathBuf {
 
 pub(crate) fn ensure_socket_parent(path: &Path) -> Result<()> {
     if let Some(parent) = path.parent() {
-        crate::config::ensure_private_directory(parent)?;
+        crate::config::ensure_secure_data_directory(parent, "daemon socket parent")?;
     }
     Ok(())
 }

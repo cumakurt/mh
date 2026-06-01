@@ -24,17 +24,29 @@ pub struct Database {
     pub(crate) path: PathBuf,
 }
 
+const DEFAULT_BUSY_TIMEOUT_MS: i64 = 5_000;
+const RECORD_BUSY_TIMEOUT_MS: i64 = 20;
+
 impl Database {
     pub fn open(config: &AppConfig) -> Result<Self> {
         let path = config.database_path()?;
         let database = Self::open_path(path)?;
-        if config.database.auto_vacuum {
-            let _ = database.connection.execute("PRAGMA incremental_vacuum", []);
-        }
+        database.maybe_incremental_vacuum(config);
+        Ok(database)
+    }
+
+    pub fn open_for_record(config: &AppConfig) -> Result<Self> {
+        let path = config.database_path()?;
+        let database = Self::open_path_with_busy_timeout(path, RECORD_BUSY_TIMEOUT_MS)?;
+        database.maybe_incremental_vacuum(config);
         Ok(database)
     }
 
     pub fn open_path(path: PathBuf) -> Result<Self> {
+        Self::open_path_with_busy_timeout(path, DEFAULT_BUSY_TIMEOUT_MS)
+    }
+
+    fn open_path_with_busy_timeout(path: PathBuf, busy_timeout_ms: i64) -> Result<Self> {
         if path.exists() && path.is_dir() {
             anyhow::bail!(
                 "database path {} is a directory, not a file",
@@ -42,7 +54,7 @@ impl Database {
             );
         }
         if let Some(parent) = path.parent() {
-            config::ensure_private_directory(parent)?;
+            config::ensure_secure_data_directory(parent, "database parent")?;
         }
         if path.exists() {
             config::ensure_not_symlink(&path)?;
@@ -52,7 +64,7 @@ impl Database {
             .with_context(|| format!("failed to open database at {}", path.display()))?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
         connection.pragma_update(None, "journal_mode", "WAL")?;
-        connection.pragma_update(None, "busy_timeout", 5_000)?;
+        connection.pragma_update(None, "busy_timeout", busy_timeout_ms)?;
         connection.pragma_update(None, "cache_size", -64_000)?;
         connection.pragma_update(None, "wal_autocheckpoint", 1_000)?;
         connection.pragma_update(None, "synchronous", "NORMAL")?;
@@ -63,6 +75,12 @@ impl Database {
         database.run_migrations()?;
         database.verify_schema_version()?;
         Ok(database)
+    }
+
+    fn maybe_incremental_vacuum(&self, config: &AppConfig) {
+        if config.database.auto_vacuum {
+            let _ = self.connection.execute("PRAGMA incremental_vacuum", []);
+        }
     }
 
     fn verify_schema_version(&self) -> Result<()> {

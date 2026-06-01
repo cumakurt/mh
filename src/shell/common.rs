@@ -73,7 +73,7 @@ macro_rules! mh_record_helper_fish {
         r#"
 function __mh_record
   if set -q MH_RECORD_VERBOSE; or set -q MH_POLICY_VERBOSE
-    command mh record $argv 2>&1
+    command mh record $argv 1>&2
   else
     command mh record $argv >/dev/null 2>&1
   end
@@ -87,6 +87,9 @@ pub const BASH_INTEGRATION: &str = concat!(
     bash_zsh_time_helpers!(),
     mh_record_helper_bash_zsh!(),
     r#"
+if [[ -z "${__MH_BASH_INTEGRATION_LOADED:-}" ]]; then
+__MH_BASH_INTEGRATION_LOADED=1
+
 if [[ -z "${MH_SESSION_ID:-}" ]]; then
   export MH_SESSION_ID="$(date +%s)-$$"
 fi
@@ -116,7 +119,7 @@ __mh_precmd() {
       --shell "bash" \
       --exit-code "$exit_code" \
       --duration-ms "$duration_ms" \
-      --session-id "$MH_SESSION_ID" >/dev/null 2>&1
+      --session-id "$MH_SESSION_ID"
     unset MH_LAST_COMMAND MH_START_TIME
   fi
 }
@@ -142,6 +145,7 @@ if [[ $- == *i* ]]; then
   bind -x '"\e[A": __mh_history_picker'
   bind -x '"\eOA": __mh_history_picker'
 fi
+fi
 "#
 );
 
@@ -151,6 +155,9 @@ pub const ZSH_INTEGRATION: &str = concat!(
     bash_zsh_time_helpers!(),
     mh_record_helper_bash_zsh!(),
     r#"
+if [[ -z "${__MH_ZSH_INTEGRATION_LOADED:-}" ]]; then
+__MH_ZSH_INTEGRATION_LOADED=1
+
 if [[ -z "${MH_SESSION_ID:-}" ]]; then
   export MH_SESSION_ID="$(date +%s)-$$"
 fi
@@ -179,7 +186,7 @@ _mh_precmd() {
       --shell "zsh" \
       --exit-code "$exit_code" \
       --duration-ms "$duration_ms" \
-      --session-id "$MH_SESSION_ID" >/dev/null 2>&1
+      --session-id "$MH_SESSION_ID"
     unset MH_LAST_COMMAND MH_START_TIME
   fi
 }
@@ -203,6 +210,7 @@ if [[ -o interactive ]]; then
   bindkey '^[[A' _mh_history_picker
   bindkey '^[OA' _mh_history_picker
 fi
+fi
 "#
 );
 
@@ -211,6 +219,9 @@ pub const FISH_INTEGRATION: &str = concat!(
     fish_time_helpers!(),
     mh_record_helper_fish!(),
     r#"
+if not set -q __mh_fish_integration_loaded
+  set -g __mh_fish_integration_loaded 1
+
 if not set -q MH_SESSION_ID
   set -gx MH_SESSION_ID (date +%s)-$fish_pid
 end
@@ -241,7 +252,7 @@ function mh_postexec --on-event fish_postexec
       --shell "fish" \
       --exit-code "$exit_code" \
       --duration-ms "$duration_ms" \
-      --session-id "$MH_SESSION_ID" >/dev/null 2>&1
+      --session-id "$MH_SESSION_ID"
     set -e MH_LAST_COMMAND
     set -e MH_START_TIME
   end
@@ -262,5 +273,6 @@ end
 
 bind \e\[A mh_history_picker
 bind \eOA mh_history_picker
+end
 "#
 );

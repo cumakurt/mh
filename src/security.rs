@@ -23,6 +23,8 @@ pub struct SecurityEngine {
     ignore_patterns: Vec<Regex>,
 }
 
+pub const MAX_COMMAND_BYTES: usize = 256 * 1024;
+
 impl SecurityEngine {
     pub fn from_config(config: &AppConfig) -> Result<Self> {
         let ignore_patterns = config
@@ -74,6 +76,9 @@ pub fn command_for_audit(
         SecurityAction::Skipped(reason) if reason.contains("private mode") => {
             Ok("[redacted: private mode]".to_string())
         }
+        SecurityAction::Skipped(reason) if reason.contains("maximum length") => {
+            Ok(decision.command.clone())
+        }
         SecurityAction::Masked => Ok(decision.command.clone()),
         _ => redact_for_audit(original, config),
     }
@@ -84,6 +89,15 @@ fn process_command_with_engine(
     config: &AppConfig,
     engine: &SecurityEngine,
 ) -> Result<SecurityDecision> {
+    if command.len() > MAX_COMMAND_BYTES {
+        return Ok(SecurityDecision {
+            command: "[redacted: command too large]".to_string(),
+            action: SecurityAction::Skipped(format!(
+                "command exceeds maximum length of {MAX_COMMAND_BYTES} bytes"
+            )),
+        });
+    }
+
     if private_mode_enabled(config) && !crate::break_glass::is_active() {
         return Ok(SecurityDecision {
             command: command.to_string(),
@@ -175,29 +189,33 @@ pub fn private_mode_enabled(config: &AppConfig) -> bool {
 }
 
 pub fn contains_secret(command: &str) -> Result<bool> {
-    Ok(contains_luhn_credit_card(command)
-        || authorization_header_regex().is_match(command)
-        || export_secret_env_regex().is_match(command)
-        || long_flag_regex().is_match(command)
-        || mysql_password_flag_regex().is_match(command)
-        || docker_login_password_regex().is_match(command)
-        || curl_user_password_regex().is_match(command)
-        || curl_long_user_regex().is_match(command)
-        || wget_password_regex().is_match(command)
-        || redis_auth_regex().is_match(command)
-        || sshpass_env_regex().is_match(command)
-        || sshpass_password_flag_regex().is_match(command)
-        || db_connection_url_regex().is_match(command)
-        || pgpassword_env_regex().is_match(command)
-        || kubectl_secret_literal_regex().is_match(command))
+    Ok(contains_luhn_credit_card(command)?
+        || authorization_header_regex()?.is_match(command)
+        || export_secret_env_regex()?.is_match(command)
+        || long_flag_regex()?.is_match(command)
+        || mysql_password_flag_regex()?.is_match(command)
+        || docker_login_password_regex()?.is_match(command)
+        || curl_user_password_regex()?.is_match(command)
+        || curl_long_user_regex()?.is_match(command)
+        || wget_password_regex()?.is_match(command)
+        || redis_auth_regex()?.is_match(command)
+        || sshpass_env_regex()?.is_match(command)
+        || sshpass_password_flag_regex()?.is_match(command)
+        || db_connection_url_regex()?.is_match(command)
+        || pgpassword_env_regex()?.is_match(command)
+        || kubectl_secret_literal_regex()?.is_match(command)
+        || npm_config_secret_regex()?.is_match(command)
+        || helm_set_secret_regex()?.is_match(command)
+        || contains_private_key_pem(command)?)
 }
 
 pub fn mask_secrets(command: &str) -> Result<String> {
     let mut masked = command.to_string();
-    for (regex, replacement) in masking_regexes().iter().zip(masking_replacements().iter()) {
+    for (regex, replacement) in masking_regexes()?.iter().zip(masking_replacements().iter()) {
         masked = regex.replace_all(&masked, *replacement).to_string();
     }
-    masked = mask_luhn_credit_cards(&masked);
+    masked = mask_luhn_credit_cards(&masked)?;
+    masked = mask_private_key_pem(&masked)?;
     Ok(masked)
 }
 
@@ -221,6 +239,8 @@ const MASKING_PATTERNS: &[&str] = &[
     r#"(?i)(redis-cli\b[^\n]*\s-a\s+)([^\s"']+)"#,
     r#"(?i)([a-z][a-z0-9+.-]*://[^:"'\s/@]+:)([^@"'\s]+)(@)"#,
     r#"(?i)(kubectl\b[^\n]*--from-literal=)([^\s"']+)"#,
+    r#"(?i)(npm_config_[^\s=]*(?:token|password|secret|auth|key)[^\s=]*\s*=\s*)([^\s]+)"#,
+    r#"(?i)(helm\b[^\n]*\s--set(?:-string)?\s+[^,\s]*(?:password|secret|token|api[_-]?key)\s*=\s*)([^,\s]+)"#,
 ];
 
 const MASKING_REPLACEMENTS: &[&str] = &[
@@ -243,104 +263,122 @@ const MASKING_REPLACEMENTS: &[&str] = &[
     "$1****",
     "$1****$3",
     "$1****",
+    "$1****",
+    "$1****",
 ];
 
-fn masking_regexes() -> &'static Vec<Regex> {
-    static RE: OnceLock<Vec<Regex>> = OnceLock::new();
+fn masking_regexes() -> Result<&'static [Regex]> {
+    static RE: OnceLock<Result<Vec<Regex>, String>> = OnceLock::new();
     RE.get_or_init(|| {
         MASKING_PATTERNS
             .iter()
-            .map(|pattern| Regex::new(pattern).expect("masking regex is valid"))
+            .map(|pattern| {
+                Regex::new(pattern)
+                    .map_err(|error| format!("invalid built-in masking regex {pattern:?}: {error}"))
+            })
             .collect()
     })
+    .as_deref()
+    .map_err(|message| anyhow::anyhow!(message.clone()))
 }
 
 fn masking_replacements() -> &'static [&'static str] {
     MASKING_REPLACEMENTS
 }
 
-fn authorization_header_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r#"(?i)Authorization:\s*(?:Bearer|Basic)\s+\S+"#)
-            .expect("authorization header regex is valid")
+fn cached_regex(
+    cell: &'static OnceLock<Result<Regex, String>>,
+    name: &'static str,
+    pattern: &'static str,
+) -> Result<&'static Regex> {
+    cell.get_or_init(|| {
+        Regex::new(pattern).map_err(|error| format!("invalid built-in {name} regex: {error}"))
     })
+    .as_ref()
+    .map_err(|message| anyhow::anyhow!(message.clone()))
 }
 
-fn export_secret_env_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(
-            r#"(?i)(?:^|[\s;&|]|^export\s+)[A-Za-z_]*(?:PASSWORD|PASSWD|TOKEN|SECRET|API[_-]?KEY|AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|GITHUB_TOKEN|GITLAB_TOKEN|MYSQL_PWD)[A-Za-z_]*\s*=\S+"#,
-        )
-        .expect("export secret env regex is valid")
-    })
+fn authorization_header_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "authorization header",
+        r#"(?i)Authorization:\s*(?:Bearer|Basic)\s+\S+"#,
+    )
 }
 
-fn pgpassword_env_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?i)PGPASSWORD=\S+").expect("pgpassword env regex is valid"))
+fn export_secret_env_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "export secret env",
+        r#"(?i)(?:^|[\s;&|]|^export\s+)[A-Za-z_]*(?:PASSWORD|PASSWD|TOKEN|SECRET|API[_-]?KEY|AWS_SECRET_ACCESS_KEY|AWS_ACCESS_KEY_ID|GITHUB_TOKEN|GITLAB_TOKEN|MYSQL_PWD)[A-Za-z_]*\s*=\s*\S+"#,
+    )
 }
 
-fn credit_card_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"\b(?:\d[ -]*?){13,19}\b").expect("credit card regex is valid"))
+fn pgpassword_env_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(&RE, "PGPASSWORD env", r"(?i)PGPASSWORD=\S+")
 }
 
-fn long_flag_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"(?i)--(?:password|passwd|token|secret|api[_-]?key)(?:=\S+|\s+\S+)")
-            .expect("long flag regex is valid")
-    })
+fn credit_card_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(&RE, "credit card", r"\b(?:\d[ -]*?){13,19}\b")
 }
 
-fn mysql_password_flag_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(
-            r#"(?i)(?:mysql|mariadb|mysqldump)\b[^\n]*-p(?:"[^"]*"|'[^']*'|\S+|\s+\S+)"#,
-        )
-        .expect("mysql password regex is valid")
-    })
+fn long_flag_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "long secret flag",
+        r"(?i)--(?:password|passwd|token|secret|api[_-]?key)(?:=\S+|\s+\S+)",
+    )
 }
 
-fn docker_login_password_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"(?i)docker\s+login\b[^\n]*-p(?:\s+\S+|\S+)")
-            .expect("docker login regex is valid")
-    })
+fn mysql_password_flag_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "mysql password",
+        r#"(?i)(?:mysql|mariadb|mysqldump)\b[^\n]*-p(?:"[^"]*"|'[^']*'|\S+|\s+\S+)"#,
+    )
 }
 
-fn curl_user_password_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r#"(?i)curl\b[^\n]*\s-u\s+[^:]+:[^\s]+"#)
-            .expect("curl user password regex is valid")
-    })
+fn docker_login_password_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "docker login password",
+        r"(?i)docker\s+login\b[^\n]*-p(?:\s+\S+|\S+)",
+    )
 }
 
-fn curl_long_user_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"(?i)curl\b[^\n]*\s--user\s+[^:]+:[^\s]+")
-            .expect("curl long user regex is valid")
-    })
+fn curl_user_password_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "curl user password",
+        r#"(?i)curl\b[^\n]*\s-u\s+[^:]+:[^\s]+"#,
+    )
 }
 
-fn wget_password_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"(?i)wget\b[^\n]*\s--password=[^\s]+").expect("wget password regex is valid")
-    })
+fn curl_long_user_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "curl long user password",
+        r"(?i)curl\b[^\n]*\s--user\s+[^:]+:[^\s]+",
+    )
 }
 
-fn redis_auth_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"(?i)redis-cli\b[^\n]*\s-a\s+\S+").expect("redis auth regex is valid")
-    })
+fn wget_password_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(&RE, "wget password", r"(?i)wget\b[^\n]*\s--password=[^\s]+")
+}
+
+fn redis_auth_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(&RE, "redis auth", r"(?i)redis-cli\b[^\n]*\s-a\s+\S+")
 }
 
 fn has_hide_prefix(command: &str) -> bool {
@@ -350,45 +388,97 @@ fn has_hide_prefix(command: &str) -> bool {
         .is_some_and(|character| matches!(character, ' ' | '\t'))
 }
 
-fn sshpass_env_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| Regex::new(r"(?i)SSHPASS=\S+").expect("sshpass env regex is valid"))
+fn sshpass_env_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(&RE, "sshpass env", r"(?i)SSHPASS=\S+")
 }
 
-fn sshpass_password_flag_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r#"(?i)sshpass\s+-p\s+(?:"[^"]*"|'[^']*'|\S+)"#)
-            .expect("sshpass password flag regex is valid")
-    })
+fn sshpass_password_flag_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "sshpass password flag",
+        r#"(?i)sshpass\s+-p\s+(?:"[^"]*"|'[^']*'|\S+)"#,
+    )
 }
 
-fn db_connection_url_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r#"(?i)[a-z][a-z0-9+.-]*://[^:"'\s/@]+:[^@"'\s]+@"#)
-            .expect("database connection url regex is valid")
-    })
+fn db_connection_url_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "database connection url",
+        r#"(?i)[a-z][a-z0-9+.-]*://[^:"'\s/@]+:[^@"'\s]+@"#,
+    )
 }
 
-fn kubectl_secret_literal_regex() -> &'static Regex {
-    static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(
-            r#"(?i)kubectl\b[^\n]*\b(?:create|apply)\b[^\n]*\bsecret\b[^\n]*--from-literal=[^\s"']+"#,
-        )
-        .expect("kubectl secret literal regex is valid")
-    })
+fn kubectl_secret_literal_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "kubectl secret literal",
+        r#"(?i)kubectl\b[^\n]*\b(?:create|apply)\b[^\n]*\bsecret\b[^\n]*--from-literal=[^\s"']+"#,
+    )
 }
 
-fn contains_luhn_credit_card(command: &str) -> bool {
-    credit_card_regex()
+fn npm_config_secret_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "npm config secret",
+        r"(?i)npm_config_[^\s=]*(?:token|password|secret|auth|key)[^\s=]*\s*=\s*\S+",
+    )
+}
+
+fn helm_set_secret_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "helm set secret",
+        r#"(?i)helm\b[^\n]*\s--set(?:-string)?\s+[^,\s]*(?:password|secret|token|api[_-]?key)\s*=\s*[^,\s]+"#,
+    )
+}
+
+fn private_key_pem_block_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "private key pem block",
+        r"(?s)-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----.*?-----END (?:[A-Z]+ )?PRIVATE KEY-----",
+    )
+}
+
+fn private_key_pem_header_regex() -> Result<&'static Regex> {
+    static RE: OnceLock<Result<Regex, String>> = OnceLock::new();
+    cached_regex(
+        &RE,
+        "private key pem header",
+        r"-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----",
+    )
+}
+
+fn contains_private_key_pem(command: &str) -> Result<bool> {
+    Ok(private_key_pem_block_regex()?.is_match(command)
+        || private_key_pem_header_regex()?.is_match(command))
+}
+
+fn mask_private_key_pem(command: &str) -> Result<String> {
+    const REDACTED: &str = "[redacted: private key]";
+    let masked = private_key_pem_block_regex()?
+        .replace_all(command, REDACTED)
+        .into_owned();
+    Ok(private_key_pem_header_regex()?
+        .replace_all(&masked, REDACTED)
+        .into_owned())
+}
+
+fn contains_luhn_credit_card(command: &str) -> Result<bool> {
+    Ok(credit_card_regex()?
         .find_iter(command)
-        .any(|candidate| luhn_valid(&digits_only(candidate.as_str())))
+        .any(|candidate| luhn_valid(&digits_only(candidate.as_str()))))
 }
 
-fn mask_luhn_credit_cards(command: &str) -> String {
-    credit_card_regex()
+fn mask_luhn_credit_cards(command: &str) -> Result<String> {
+    Ok(credit_card_regex()?
         .replace_all(command, |caps: &regex::Captures| {
             let matched = caps.get(0).map(|value| value.as_str()).unwrap_or("");
             if luhn_valid(&digits_only(matched)) {
@@ -397,7 +487,7 @@ fn mask_luhn_credit_cards(command: &str) -> String {
                 matched.to_string()
             }
         })
-        .into_owned()
+        .into_owned())
 }
 
 fn digits_only(value: &str) -> String {
@@ -413,7 +503,11 @@ fn luhn_valid(digits: &str) -> bool {
     }
     let mut sum = 0u32;
     let mut double = false;
-    for digit in digits.chars().rev().filter_map(|character| character.to_digit(10)) {
+    for digit in digits
+        .chars()
+        .rev()
+        .filter_map(|character| character.to_digit(10))
+    {
         let mut value = digit;
         if double {
             value *= 2;
@@ -473,5 +567,24 @@ mod tests {
             SecurityAction::Masked | SecurityAction::Skipped(_)
         ));
         assert!(!decision.command.contains("topsecret"));
+    }
+
+    #[test]
+    fn detects_env_secret_with_spaces_around_equals() {
+        assert!(contains_secret("export AWS_SECRET_ACCESS_KEY = xxxx").expect("detect secret"));
+        let masked = mask_secrets("export AWS_SECRET_ACCESS_KEY = xxxx").expect("mask secret");
+        assert!(!masked.contains("xxxx"));
+        assert!(masked.contains("****"));
+    }
+
+    #[test]
+    fn oversized_command_is_not_persisted_or_audited_raw() {
+        let config = AppConfig::default();
+        let command = "a".repeat(MAX_COMMAND_BYTES + 1);
+        let decision = process_command(&command, &config).expect("process");
+        assert!(matches!(decision.action, SecurityAction::Skipped(_)));
+        assert_eq!(decision.command, "[redacted: command too large]");
+        let audit = command_for_audit(&command, &decision, &config).expect("audit command");
+        assert_eq!(audit, "[redacted: command too large]");
     }
 }

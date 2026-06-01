@@ -181,12 +181,47 @@ fn pipeline_returns_policy_denied_for_matching_rule() {
 
     match result {
         Err(error) => assert!(
-            error
-                .chain()
-                .any(|cause| matches!(cause.downcast_ref::<MhError>(), Some(MhError::PolicyDenied(_)))),
+            error.chain().any(|cause| matches!(
+                cause.downcast_ref::<MhError>(),
+                Some(MhError::PolicyDenied(_))
+            )),
             "expected PolicyDenied, got: {error:#}"
         ),
         Ok(()) => panic!("policy deny should return an error"),
     }
     assert_eq!(database.count_commands().expect("count"), 0);
+}
+
+#[test]
+fn pipeline_clamps_negative_duration_to_zero() {
+    let temp_dir = tempfile::tempdir().expect("tempdir");
+    let mut config = AppConfig::default();
+    config.database.path = temp_dir
+        .path()
+        .join("history.db")
+        .to_string_lossy()
+        .to_string();
+
+    let database = Database::open(&config).expect("open database");
+    execute(
+        &config,
+        &database,
+        &RecordPayload {
+            command: "echo duration".to_string(),
+            cwd: Some("/tmp".to_string()),
+            shell: Some("test".to_string()),
+            exit_code: Some(0),
+            duration_ms: Some(-25),
+            started_at: None,
+            finished_at: None,
+            session_id: Some("sess".to_string()),
+            tty: None,
+            tags: None,
+            env_context: None,
+        },
+    )
+    .expect("execute");
+
+    let row = database.get_command(1).expect("command");
+    assert_eq!(row.duration_ms, Some(0));
 }

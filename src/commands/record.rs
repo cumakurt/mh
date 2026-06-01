@@ -11,11 +11,15 @@ use crate::errors::{self, MhError};
 use crate::record_pipeline;
 
 const DB_LOCK_RETRIES: u32 = 3;
+const DB_LOCK_BACKOFF_MS: u64 = 10;
 
 fn is_policy_denied(error: &anyhow::Error) -> bool {
-    error
-        .chain()
-        .any(|cause| matches!(cause.downcast_ref::<MhError>(), Some(MhError::PolicyDenied(_))))
+    error.chain().any(|cause| {
+        matches!(
+            cause.downcast_ref::<MhError>(),
+            Some(MhError::PolicyDenied(_))
+        )
+    })
 }
 
 pub fn run(args: RecordArgs) -> Result<()> {
@@ -29,7 +33,7 @@ pub fn run(args: RecordArgs) -> Result<()> {
 
     let config = AppConfig::load()?;
     let payload = record_pipeline::RecordPayload::from(&args);
-    let database = Database::open(&config)?;
+    let database = Database::open_for_record(&config)?;
 
     let mut last_error = None;
     for attempt in 0..DB_LOCK_RETRIES {
@@ -41,8 +45,12 @@ pub fn run(args: RecordArgs) -> Result<()> {
                 }
                 return Ok(());
             }
-            Err(error) if MhError::is_retryable_database_lock(&error) && attempt + 1 < DB_LOCK_RETRIES => {
-                thread::sleep(Duration::from_millis(25 * (attempt as u64 + 1)));
+            Err(error)
+                if MhError::is_retryable_database_lock(&error) && attempt + 1 < DB_LOCK_RETRIES =>
+            {
+                thread::sleep(Duration::from_millis(
+                    DB_LOCK_BACKOFF_MS * (attempt as u64 + 1),
+                ));
                 last_error = Some(error);
             }
             Err(error) => return Err(error),

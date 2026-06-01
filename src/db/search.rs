@@ -26,24 +26,32 @@ impl Database {
             && !filters.fuzzy
             && !filters.fts
         {
-            sql.push_str(" AND c.command LIKE ?");
-            values.push(Value::Text(format!("%{query}%")));
+            sql.push_str(" AND c.command LIKE ? ESCAPE '\\'");
+            values.push(Value::Text(format!("%{}%", escape_like(query))));
         }
 
         if let Some(query) = filters.query.as_deref().filter(|query| !query.is_empty())
             && filters.fts
         {
+            let normalized_query = fts_query(query);
+            if normalized_query.is_empty() {
+                return Ok(Vec::new());
+            }
             sql.push_str(
                 " AND c.id IN (SELECT rowid FROM commands_fts WHERE commands_fts MATCH ?)",
             );
-            values.push(Value::Text(fts_query(query)));
+            values.push(Value::Text(normalized_query));
         }
 
         if let Some(query) = filters.query.as_deref().filter(|query| !query.is_empty())
             && filters.fuzzy
         {
             let char_count = query.chars().count();
-            let prefix_len = if char_count <= 3 { 1 } else { 2.min(char_count) };
+            let prefix_len = if char_count <= 3 {
+                1
+            } else {
+                2.min(char_count)
+            };
             let prefix: String = query.chars().take(prefix_len).collect();
             if !prefix.is_empty() {
                 sql.push_str(" AND c.command LIKE ? ESCAPE '\\'");
@@ -52,8 +60,8 @@ impl Database {
         }
 
         if let Some(cwd) = filters.cwd.as_deref().filter(|cwd| !cwd.is_empty()) {
-            sql.push_str(" AND c.cwd LIKE ?");
-            values.push(Value::Text(format!("%{cwd}%")));
+            sql.push_str(" AND c.cwd LIKE ? ESCAPE '\\'");
+            values.push(Value::Text(format!("%{}%", escape_like(cwd))));
         }
 
         if filters.failed {
@@ -76,7 +84,7 @@ impl Database {
 
         if let Some(after) = filters.after.as_deref().filter(|after| !after.is_empty()) {
             sql.push_str(" AND c.started_at >= ?");
-            values.push(Value::Text(normalize_date_bound(after, true)));
+            values.push(Value::Text(normalize_date_bound(after, true)?));
         }
 
         if let Some(before) = filters
@@ -85,7 +93,7 @@ impl Database {
             .filter(|before| !before.is_empty())
         {
             sql.push_str(" AND c.started_at <= ?");
-            values.push(Value::Text(normalize_date_bound(before, false)));
+            values.push(Value::Text(normalize_date_bound(before, false)?));
         }
 
         if let Some(session_id) = filters.session_id.as_deref().filter(|id| !id.is_empty()) {
@@ -319,7 +327,7 @@ impl Database {
     fn search_recent_fast(&self, filters: &SearchFilters) -> Result<Vec<CommandRow>> {
         let mut id_sql = String::from("SELECT c.id FROM commands c WHERE 1 = 1");
         let mut values = Vec::<Value>::new();
-        append_recent_filters(&mut id_sql, &mut values, filters);
+        append_recent_filters(&mut id_sql, &mut values, filters)?;
         id_sql.push_str(" ORDER BY c.started_at DESC, c.id DESC LIMIT ?");
         values.push(Value::Integer(filters.limit.min(i64::MAX as usize) as i64));
 
@@ -348,10 +356,14 @@ impl Database {
     }
 }
 
-fn append_recent_filters(sql: &mut String, values: &mut Vec<Value>, filters: &SearchFilters) {
+fn append_recent_filters(
+    sql: &mut String,
+    values: &mut Vec<Value>,
+    filters: &SearchFilters,
+) -> Result<()> {
     if let Some(cwd) = filters.cwd.as_deref().filter(|cwd| !cwd.is_empty()) {
-        sql.push_str(" AND c.cwd LIKE ?");
-        values.push(Value::Text(format!("%{cwd}%")));
+        sql.push_str(" AND c.cwd LIKE ? ESCAPE '\\'");
+        values.push(Value::Text(format!("%{}%", escape_like(cwd))));
     }
 
     if filters.failed {
@@ -374,7 +386,7 @@ fn append_recent_filters(sql: &mut String, values: &mut Vec<Value>, filters: &Se
 
     if let Some(after) = filters.after.as_deref().filter(|after| !after.is_empty()) {
         sql.push_str(" AND c.started_at >= ?");
-        values.push(Value::Text(normalize_date_bound(after, true)));
+        values.push(Value::Text(normalize_date_bound(after, true)?));
     }
 
     if let Some(before) = filters
@@ -383,7 +395,7 @@ fn append_recent_filters(sql: &mut String, values: &mut Vec<Value>, filters: &Se
         .filter(|before| !before.is_empty())
     {
         sql.push_str(" AND c.started_at <= ?");
-        values.push(Value::Text(normalize_date_bound(before, false)));
+        values.push(Value::Text(normalize_date_bound(before, false)?));
     }
 
     if let Some(session_id) = filters.session_id.as_deref().filter(|id| !id.is_empty()) {
@@ -466,4 +478,6 @@ fn append_recent_filters(sql: &mut String, values: &mut Vec<Value>, filters: &Se
         sql.push_str(" AND c.environment_tier = ?");
         values.push(Value::Text(environment.to_string()));
     }
+
+    Ok(())
 }

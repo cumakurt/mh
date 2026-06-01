@@ -588,6 +588,67 @@ pub fn ensure_private_directory(path: &Path) -> Result<()> {
     restrict_directory_permissions(path)
 }
 
+/// Creates a missing application data directory privately, but refuses insecure existing parents.
+///
+/// This avoids changing permissions on broad directories such as /tmp or $HOME while still
+/// preventing database/socket files from being created in group/world-writable locations.
+pub fn ensure_secure_data_directory(path: &Path, label: &str) -> Result<()> {
+    if path.as_os_str().is_empty() {
+        return Ok(());
+    }
+
+    match path.symlink_metadata() {
+        Ok(metadata) => {
+            if metadata.file_type().is_symlink() {
+                anyhow::bail!("{label} directory is a symlink: {}", path.display());
+            }
+            if !metadata.is_dir() {
+                anyhow::bail!("{label} path is not a directory: {}", path.display());
+            }
+            ensure_not_group_or_other_writable(path, label)
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            fs::create_dir_all(path).with_context(|| {
+                format!("failed to create {label} directory {}", path.display())
+            })?;
+            restrict_directory_permissions(path)
+        }
+        Err(error) => Err(error)
+            .with_context(|| format!("failed to inspect {label} directory {}", path.display())),
+    }
+}
+
+#[cfg(unix)]
+fn ensure_not_group_or_other_writable(path: &Path, label: &str) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mode = fs::metadata(path)
+        .with_context(|| format!("failed to read permissions for {}", path.display()))?
+        .permissions()
+        .mode();
+    if mode & 0o022 != 0 {
+        anyhow::bail!(
+            "{label} directory {} is writable by group or others; choose a private directory",
+            path.display()
+        );
+    }
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn ensure_not_group_or_other_writable(_path: &Path, _label: &str) -> Result<()> {
+    Ok(())
+}
+
+/// Creates a directory without changing permissions on an existing parent.
+pub fn ensure_directory(path: &Path) -> Result<()> {
+    if path.as_os_str().is_empty() {
+        return Ok(());
+    }
+    fs::create_dir_all(path)
+        .with_context(|| format!("failed to create directory {}", path.display()))
+}
+
 /// Refuses when the path already exists as a symlink.
 pub fn ensure_not_symlink(path: &Path) -> Result<()> {
     match path.symlink_metadata() {
@@ -604,8 +665,11 @@ pub fn ensure_not_symlink(path: &Path) -> Result<()> {
 pub fn write_private_file(path: &Path, content: &[u8]) -> Result<()> {
     ensure_not_symlink(path)?;
 
-    if let Some(parent) = path.parent().filter(|parent| !parent.as_os_str().is_empty()) {
-        ensure_private_directory(parent)?;
+    if let Some(parent) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        ensure_directory(parent)?;
     }
 
     #[cfg(unix)]
@@ -617,7 +681,11 @@ pub fn write_private_file(path: &Path, content: &[u8]) -> Result<()> {
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or("export");
-        let temp_path = path.with_file_name(format!(".{file_name}.mh-{}.tmp", std::process::id()));
+        let temp_path = path.with_file_name(format!(
+            ".{file_name}.mh-{}-{}.tmp",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
         {
             let mut file = fs::OpenOptions::new()
                 .write(true)
@@ -625,14 +693,10 @@ pub fn write_private_file(path: &Path, content: &[u8]) -> Result<()> {
                 .mode(0o600)
                 .open(&temp_path)
                 .with_context(|| {
-                    format!(
-                        "failed to create temporary file {}",
-                        temp_path.display()
-                    )
+                    format!("failed to create temporary file {}", temp_path.display())
                 })?;
-            file.write_all(content).with_context(|| {
-                format!("failed to write payload to {}", temp_path.display())
-            })?;
+            file.write_all(content)
+                .with_context(|| format!("failed to write payload to {}", temp_path.display()))?;
             file.sync_all()?;
         }
         restrict_file_permissions(&temp_path)?;
@@ -640,9 +704,8 @@ pub fn write_private_file(path: &Path, content: &[u8]) -> Result<()> {
         if path.symlink_metadata().is_ok() {
             fs::remove_file(path)?;
         }
-        fs::rename(&temp_path, path).with_context(|| {
-            format!("failed to finalize write to {}", path.display())
-        })?;
+        fs::rename(&temp_path, path)
+            .with_context(|| format!("failed to finalize write to {}", path.display()))?;
         restrict_file_permissions(path)?;
         Ok(())
     }
@@ -657,8 +720,8 @@ pub fn write_private_file(path: &Path, content: &[u8]) -> Result<()> {
 
 /// Copies a file without following a symlink at the destination path.
 pub fn copy_file_safely(source: &Path, destination: &Path) -> Result<()> {
-    let content = fs::read(source)
-        .with_context(|| format!("failed to read file {}", source.display()))?;
+    let content =
+        fs::read(source).with_context(|| format!("failed to read file {}", source.display()))?;
     write_private_file(destination, &content)
 }
 
@@ -862,11 +925,7 @@ mod tests {
         assert!(report.tightened_config_file);
         assert_eq!(report.removed_legacy_patterns, 1);
 
-        let mode = fs::metadata(&path)
-            .expect("metadata")
-            .permissions()
-            .mode()
-            & 0o777;
+        let mode = fs::metadata(&path).expect("metadata").permissions().mode() & 0o777;
         assert_eq!(mode, 0o600);
 
         unsafe {
@@ -912,5 +971,70 @@ mod tests {
             format!("{error:#}").contains("symlink"),
             "expected symlink rejection"
         );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn write_private_file_does_not_chmod_existing_parent_directory() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let parent = temp_dir.path().join("exports");
+        std::fs::create_dir_all(&parent).expect("parent dir");
+        std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod parent");
+
+        write_private_file(&parent.join("history.json"), b"[]").expect("write export");
+
+        let parent_mode = fs::metadata(&parent)
+            .expect("parent metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(parent_mode, 0o755);
+
+        let file_mode = fs::metadata(parent.join("history.json"))
+            .expect("file metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(file_mode, 0o600);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn secure_data_directory_does_not_chmod_existing_private_parent() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let parent = temp_dir.path().join("existing");
+        std::fs::create_dir_all(&parent).expect("parent dir");
+        std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755))
+            .expect("chmod parent");
+
+        ensure_secure_data_directory(&parent, "database parent").expect("secure parent");
+
+        let mode = fs::metadata(&parent)
+            .expect("parent metadata")
+            .permissions()
+            .mode()
+            & 0o777;
+        assert_eq!(mode, 0o755);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn secure_data_directory_rejects_world_writable_parent() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let parent = temp_dir.path().join("unsafe");
+        std::fs::create_dir_all(&parent).expect("parent dir");
+        std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777))
+            .expect("chmod parent");
+
+        let error = ensure_secure_data_directory(&parent, "database parent")
+            .expect_err("world-writable parent should fail");
+        assert!(format!("{error:#}").contains("writable by group or others"));
     }
 }

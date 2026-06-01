@@ -78,25 +78,53 @@ fn emit_cef(config: &SiemConfig, row: &AuditRow) -> Result<()> {
 fn format_syslog(row: &AuditRow) -> String {
     format!(
         "<134>1 {} {} mh - - - event={} reason={} command={}",
-        row.created_at,
-        row.hostname.as_deref().unwrap_or("-"),
-        row.event_type,
-        row.reason.as_deref().unwrap_or("-"),
-        row.raw_command.as_deref().unwrap_or("-")
+        flatten_log_value(&row.created_at),
+        flatten_log_value(row.hostname.as_deref().unwrap_or("-")),
+        flatten_log_value(&row.event_type),
+        flatten_log_value(row.reason.as_deref().unwrap_or("-")),
+        flatten_log_value(row.raw_command.as_deref().unwrap_or("-"))
     )
 }
 
 fn format_cef(row: &AuditRow) -> String {
     format!(
         "CEF:0|mh|mh|0.1.0|{}|{}|5|rt={} msg={} cs1={} suser={} shost={}",
-        row.event_type,
-        row.event_type,
-        row.created_at,
-        row.reason.as_deref().unwrap_or("-"),
-        row.raw_command.as_deref().unwrap_or("-"),
-        row.username.as_deref().unwrap_or("-"),
-        row.hostname.as_deref().unwrap_or("-")
+        escape_cef_value(&row.event_type),
+        escape_cef_value(&row.event_type),
+        escape_cef_value(&row.created_at),
+        escape_cef_value(row.reason.as_deref().unwrap_or("-")),
+        escape_cef_value(row.raw_command.as_deref().unwrap_or("-")),
+        escape_cef_value(row.username.as_deref().unwrap_or("-")),
+        escape_cef_value(row.hostname.as_deref().unwrap_or("-"))
     )
+}
+
+fn flatten_log_value(value: &str) -> String {
+    value
+        .chars()
+        .map(|character| {
+            if character.is_control() {
+                ' '
+            } else {
+                character
+            }
+        })
+        .collect()
+}
+
+fn escape_cef_value(value: &str) -> String {
+    let mut escaped = String::with_capacity(value.len());
+    for character in value.chars() {
+        match character {
+            '\\' => escaped.push_str(r"\\"),
+            '=' => escaped.push_str(r"\="),
+            '|' => escaped.push_str(r"\|"),
+            '\n' | '\r' | '\t' => escaped.push(' '),
+            character if character.is_control() => escaped.push(' '),
+            character => escaped.push(character),
+        }
+    }
+    escaped
 }
 
 fn send_tcp(address: &str, message: &str) -> Result<()> {
@@ -120,12 +148,47 @@ fn send_webhook(url: &str, message: &str) -> Result<()> {
             .body(serde_json::json!({ "message": message }).to_string())
             .send()
             .with_context(|| format!("failed to POST audit event to {url}"))?;
-        return Ok(());
+        Ok(())
     }
 
     #[cfg(not(feature = "sync"))]
     {
         let _ = (url, message);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn audit_row(raw_command: &str) -> AuditRow {
+        AuditRow {
+            id: 1,
+            event_type: "masked".to_string(),
+            raw_command: Some(raw_command.to_string()),
+            reason: Some("secret\nmasked".to_string()),
+            username: Some("user".to_string()),
+            hostname: Some("host\rname".to_string()),
+            created_at: "2026-06-01T00:00:00Z".to_string(),
+            prev_hash: None,
+            entry_hash: None,
+        }
+    }
+
+    #[test]
+    fn syslog_output_flattens_control_characters() {
+        let message = format_syslog(&audit_row("echo one\n<134> forged"));
+        assert!(!message.contains('\n'));
+        assert!(!message.contains('\r'));
+        assert!(message.contains("echo one <134> forged"));
+    }
+
+    #[test]
+    fn cef_output_escapes_extension_separators() {
+        let message = format_cef(&audit_row(r#"echo a=b|c\z"#));
+        assert!(message.contains(r#"echo a\=b\|c\\z"#));
+        assert!(!message.contains('\n'));
+        assert!(!message.contains('\r'));
     }
 }

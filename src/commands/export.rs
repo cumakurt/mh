@@ -175,7 +175,9 @@ fn sanitize_commands_table(connection: &Connection, config: &AppConfig) -> Resul
         let mut statement =
             connection.prepare("SELECT id, command FROM commands WHERE command IS NOT NULL")?;
         let rows = statement
-            .query_map([], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)))?
+            .query_map([], |row| {
+                Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
 
         for (id, command) in rows {

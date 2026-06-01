@@ -147,7 +147,7 @@ fn export_refuses_symlink_destination() {
         sanitize_audit: false,
     });
     assert!(result.is_err(), "export to symlink destination must fail");
-    let message = format!("{:#}", result.err().expect("error"));
+    let message = format!("{:#}", result.expect_err("error"));
     assert!(
         message.contains("symlink") || message.contains("refusing"),
         "unexpected error: {message}"

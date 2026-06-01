@@ -8,8 +8,8 @@ use sha2::{Digest, Sha256};
 use crate::cli::ImportArgs;
 use crate::config::AppConfig;
 use crate::db::Database;
-use crate::models::{CommandRecord, CommandRow};
 use crate::identity;
+use crate::models::{CommandRecord, CommandRow};
 use crate::security::{SecurityAction, SecurityEngine};
 
 pub fn run(args: ImportArgs) -> Result<()> {
@@ -52,7 +52,7 @@ pub fn run(args: ImportArgs) -> Result<()> {
             username: row.username,
             hostname: row.hostname,
             exit_code: row.exit_code,
-            duration_ms: row.duration_ms,
+            duration_ms: row.duration_ms.map(|duration| duration.max(0)),
             started_at: row.started_at,
             finished_at: None,
             session_id: row.session_id,
@@ -152,34 +152,39 @@ fn decode_zstd_bounded(input: &[u8]) -> Result<Vec<u8>> {
 
 fn parse_csv(content: &str) -> Result<Vec<CommandRow>> {
     let mut rows = Vec::new();
-    for (index, line) in content.lines().enumerate() {
-        if index == 0 || line.trim().is_empty() {
+    let mut reader = csv::ReaderBuilder::new()
+        .has_headers(true)
+        .from_reader(content.as_bytes());
+
+    for (index, record) in reader.records().enumerate() {
+        let record = record.with_context(|| format!("invalid CSV row at line {}", index + 2))?;
+        if record.iter().all(|field| field.trim().is_empty()) {
             continue;
         }
-        let columns = parse_csv_line(line);
-        if columns.len() != 9 {
+        if record.len() != 9 {
             bail!(
                 "invalid CSV row at line {}: expected 9 columns, got {}",
-                index + 1,
-                columns.len()
+                index + 2,
+                record.len()
             );
         }
-        let id = columns[0]
+        let line_number = index + 2;
+        let id = record[0]
             .parse::<i64>()
-            .with_context(|| format!("invalid command id at CSV line {}", index + 1))?;
+            .with_context(|| format!("invalid command id at CSV line {line_number}"))?;
         rows.push(CommandRow {
             id,
             started_at: crate::timestamp::parse_import_timestamp(
-                &columns[1],
-                &format!("CSV line {}", index + 1),
+                &record[1],
+                &format!("CSV line {line_number}"),
             )?,
-            exit_code: parse_optional(&columns[2]),
-            duration_ms: parse_optional(&columns[3]),
-            cwd: empty_to_none(&columns[4]),
-            shell: empty_to_none(&columns[5]),
-            category: empty_to_none(&columns[6]),
-            command: columns[7].clone(),
-            tags: columns[8]
+            exit_code: parse_optional(&record[2], "exit_code", line_number)?,
+            duration_ms: parse_optional(&record[3], "duration_ms", line_number)?,
+            cwd: empty_to_none(&record[4]),
+            shell: empty_to_none(&record[5]),
+            category: empty_to_none(&record[6]),
+            command: record[7].to_string(),
+            tags: record[8]
                 .split(',')
                 .map(str::trim)
                 .filter(|tag| !tag.is_empty())
@@ -199,35 +204,21 @@ fn parse_csv(content: &str) -> Result<Vec<CommandRow>> {
     Ok(rows)
 }
 
-fn parse_csv_line(line: &str) -> Vec<String> {
-    let mut columns = Vec::new();
-    let mut current = String::new();
-    let mut chars = line.chars().peekable();
-    let mut quoted = false;
-
-    while let Some(ch) = chars.next() {
-        match ch {
-            '"' if quoted && chars.peek() == Some(&'"') => {
-                current.push('"');
-                chars.next();
-            }
-            '"' => quoted = !quoted,
-            ',' if !quoted => {
-                columns.push(current);
-                current = String::new();
-            }
-            _ => current.push(ch),
-        }
-    }
-    columns.push(current);
-    columns
-}
-
-fn parse_optional<T: std::str::FromStr>(value: &str) -> Option<T> {
+fn parse_optional<T: std::str::FromStr>(
+    value: &str,
+    field: &str,
+    line_number: usize,
+) -> Result<Option<T>>
+where
+    T::Err: std::fmt::Display,
+{
     if value.trim().is_empty() {
-        None
+        Ok(None)
     } else {
-        value.parse().ok()
+        value
+            .parse()
+            .map(Some)
+            .map_err(|error| anyhow::anyhow!("invalid {field} at CSV line {line_number}: {error}"))
     }
 }
 
@@ -256,5 +247,36 @@ mod tests {
         encoder.finish().expect("finish");
         let result = decode_zstd_bounded(&input);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn rejects_unterminated_csv_quotes() {
+        let error = parse_csv("id,started_at,exit_code,duration_ms,cwd,shell,category,command,tags\n1,\"2026-06-01T00:00:00Z,0,,,,echo,\n")
+            .expect_err("unterminated quote should fail");
+        assert!(format!("{error:#}").contains("CSV"));
+    }
+
+    #[test]
+    fn parses_multiline_csv_commands() {
+        let rows = parse_csv(
+            "id,started_at,exit_code,duration_ms,cwd,shell,category,command,tags\n\
+             1,2026-06-01T00:00:00Z,0,10,/tmp,zsh,test,\"echo one\n\
+             echo two\",tag\n",
+        )
+        .expect("multiline CSV command should parse");
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].command, "echo one\necho two");
+    }
+
+    #[test]
+    fn rejects_invalid_csv_numeric_fields() {
+        let error = parse_csv(
+            "id,started_at,exit_code,duration_ms,cwd,shell,category,command,tags\n\
+             1,2026-06-01T00:00:00Z,nope,10,/tmp,zsh,test,echo,tag\n",
+        )
+        .expect_err("invalid exit code should fail");
+
+        assert!(format!("{error:#}").contains("invalid exit_code"));
     }
 }

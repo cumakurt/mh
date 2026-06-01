@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
-use rusqlite::types::Value;
 use rusqlite::params_from_iter;
+use rusqlite::types::Value;
 
 use super::Database;
 use super::helpers::*;

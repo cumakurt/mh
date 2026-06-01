@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, bail};
-use chrono::{DateTime, SecondsFormat, Utc};
+use chrono::{DateTime, NaiveDate, SecondsFormat, Utc};
 
 /// UTC midnight for the current calendar day.
 pub fn today_start_utc() -> Result<DateTime<Utc>> {
@@ -35,6 +35,24 @@ pub fn parse_optional_rfc3339(label: &str, value: Option<&String>) -> Result<Opt
         .with_context(|| format!("invalid {label} timestamp"))
 }
 
+/// Normalizes an RFC3339 timestamp or YYYY-MM-DD date bound for lexicographic UTC storage.
+pub fn normalize_date_bound(value: &str, start: bool) -> Result<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        bail!("date bound must not be empty");
+    }
+
+    if trimmed.contains('T') {
+        return parse_rfc3339(trimmed);
+    }
+
+    let date = NaiveDate::parse_from_str(trimmed, "%Y-%m-%d").with_context(|| {
+        format!("invalid date bound: {trimmed}; expected YYYY-MM-DD or RFC3339")
+    })?;
+    let time = if start { "00:00:00" } else { "23:59:59" };
+    Ok(format!("{}T{time}+00:00", date.format("%Y-%m-%d")))
+}
+
 /// Parses import timestamps, defaulting empty values to the current time.
 pub fn parse_import_timestamp(value: &str, context: &str) -> Result<String> {
     let trimmed = value.trim();
@@ -63,5 +81,23 @@ mod tests {
     fn import_timestamp_defaults_empty_to_now() {
         let parsed = parse_import_timestamp("", "line 2").expect("default");
         assert!(parsed.contains('T'));
+    }
+
+    #[test]
+    fn normalizes_date_bounds() {
+        assert_eq!(
+            normalize_date_bound("2026-05-31", true).expect("start bound"),
+            "2026-05-31T00:00:00+00:00"
+        );
+        assert_eq!(
+            normalize_date_bound("2026-05-31", false).expect("end bound"),
+            "2026-05-31T23:59:59+00:00"
+        );
+    }
+
+    #[test]
+    fn rejects_invalid_date_bound() {
+        assert!(normalize_date_bound("2026-99-99", true).is_err());
+        assert!(normalize_date_bound("yesterday", true).is_err());
     }
 }

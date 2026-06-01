@@ -57,5 +57,4 @@ impl Database {
             .connection
             .execute("DELETE FROM vault WHERE id = ?1", params![id])?)
     }
-
 }

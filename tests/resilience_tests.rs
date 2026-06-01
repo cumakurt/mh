@@ -9,7 +9,12 @@ use common::EnvGuard;
 
 #[test]
 fn opens_database_from_mh_db_override() {
-    let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG", "MH_CONFIG_NO_CACHE", "XDG_CONFIG_HOME"]);
+    let _guard = EnvGuard::save(&[
+        "MH_DB",
+        "MH_CONFIG",
+        "MH_CONFIG_NO_CACHE",
+        "XDG_CONFIG_HOME",
+    ]);
     _guard.clear_mh_env();
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -75,7 +80,14 @@ fn rejects_foreign_sqlite_without_mh_schema() {
 
 #[test]
 fn record_sets_ssh_flag_from_env() {
-    let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG_NO_CACHE", "SSH_CONNECTION", "SSH_CLIENT", "MH_CONFIG", "XDG_CONFIG_HOME"]);
+    let _guard = EnvGuard::save(&[
+        "MH_DB",
+        "MH_CONFIG_NO_CACHE",
+        "SSH_CONNECTION",
+        "SSH_CLIENT",
+        "MH_CONFIG",
+        "XDG_CONFIG_HOME",
+    ]);
     _guard.clear_mh_env();
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -190,7 +202,12 @@ fn open_creates_missing_database_directory() {
 
 #[test]
 fn record_pipeline_policy_deny_does_not_error() {
-    let _guard = EnvGuard::save(&["MH_DB", "MH_CONFIG_NO_CACHE", "MH_CONFIG", "XDG_CONFIG_HOME"]);
+    let _guard = EnvGuard::save(&[
+        "MH_DB",
+        "MH_CONFIG_NO_CACHE",
+        "MH_CONFIG",
+        "XDG_CONFIG_HOME",
+    ]);
     _guard.clear_mh_env();
 
     let temp_dir = tempfile::tempdir().expect("tempdir");
@@ -223,12 +240,10 @@ fn record_pipeline_policy_deny_does_not_error() {
     );
     match result {
         Err(error) => assert!(
-            error
-                .chain()
-                .any(|cause| matches!(
-                    cause.downcast_ref::<mh::errors::MhError>(),
-                    Some(mh::errors::MhError::PolicyDenied(_))
-                )),
+            error.chain().any(|cause| matches!(
+                cause.downcast_ref::<mh::errors::MhError>(),
+                Some(mh::errors::MhError::PolicyDenied(_))
+            )),
             "policy deny should return PolicyDenied, got: {error:#}"
         ),
         Ok(()) => panic!("policy deny should return an error"),
@@ -266,9 +281,15 @@ fn rejects_mh_db_directory_path() {
     let config = AppConfig::default();
     let db_path = config.database_path().expect("MH_DB path");
     let result = Database::open_path(db_path);
-    assert!(result.is_err(), "directory path should fail to open as database");
+    assert!(
+        result.is_err(),
+        "directory path should fail to open as database"
+    );
     let message = result.err().expect("error message").to_string();
-    assert!(message.contains("directory"), "error should mention directory");
+    assert!(
+        message.contains("directory"),
+        "error should mention directory"
+    );
 }
 
 #[test]
@@ -287,17 +308,12 @@ fn rejects_unwritable_database_directory() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let db_dir = temp_dir.path().join("readonly");
         std::fs::create_dir_all(&db_dir).expect("dir");
-        let mut perms = std::fs::metadata(&db_dir)
-            .expect("metadata")
-            .permissions();
+        let mut perms = std::fs::metadata(&db_dir).expect("metadata").permissions();
         perms.set_mode(0o555);
         std::fs::set_permissions(&db_dir, perms).expect("chmod");
 
         let mut config = AppConfig::default();
-        config.database.path = db_dir
-            .join("history.db")
-            .to_string_lossy()
-            .to_string();
+        config.database.path = db_dir.join("history.db").to_string_lossy().to_string();
 
         let result = Database::open(&config);
         assert!(
@@ -326,9 +342,10 @@ fn map_sqlite_error_maps_busy_to_database_locked() {
         None,
     ));
     assert!(
-        error
-            .chain()
-            .any(|cause| matches!(cause.downcast_ref::<MhError>(), Some(MhError::DatabaseLocked))),
+        error.chain().any(|cause| matches!(
+            cause.downcast_ref::<MhError>(),
+            Some(MhError::DatabaseLocked)
+        )),
         "expected DatabaseLocked, got: {error:#}"
     );
 }

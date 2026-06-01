@@ -19,8 +19,11 @@ pub fn run(args: ConfigArgs) -> Result<()> {
             if !path.exists() {
                 AppConfig::default().write_to_path(&path)?;
             }
-            let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
-            let status = Command::new(editor).arg(&path).status()?;
+            let editor = editor_command()?;
+            let Some((program, args)) = editor.split_first() else {
+                anyhow::bail!("EDITOR must not be empty");
+            };
+            let status = Command::new(program).args(args).arg(&path).status()?;
             if !status.success() {
                 anyhow::bail!("editor exited with status {status}");
             }
@@ -96,6 +99,15 @@ fn parse_value(value: &str) -> toml::Value {
     }
 }
 
+fn editor_command() -> Result<Vec<String>> {
+    let editor = std::env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
+    let editor = editor.trim();
+    if editor.is_empty() {
+        anyhow::bail!("EDITOR must not be empty");
+    }
+    shell_words::split(editor).context("failed to parse EDITOR command")
+}
+
 fn set_value(root: &mut toml::Value, key: &str, value: toml::Value) -> Result<()> {
     let parts = key.split('.').collect::<Vec<_>>();
     if parts.is_empty() || parts.iter().any(|part| part.is_empty()) {
@@ -119,4 +131,33 @@ fn set_value(root: &mut toml::Value, key: &str, value: toml::Value) -> Result<()
     }
     table.insert(last.to_string(), value);
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{LazyLock, Mutex};
+
+    static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+    #[test]
+    fn editor_command_supports_arguments() {
+        let _guard = ENV_LOCK
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let original = std::env::var("EDITOR").ok();
+        unsafe {
+            std::env::set_var("EDITOR", "code --wait");
+        }
+
+        let parsed = editor_command().expect("editor command");
+        assert_eq!(parsed, vec!["code".to_string(), "--wait".to_string()]);
+
+        unsafe {
+            match original {
+                Some(value) => std::env::set_var("EDITOR", value),
+                None => std::env::remove_var("EDITOR"),
+            }
+        }
+    }
 }

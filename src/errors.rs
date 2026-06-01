@@ -15,7 +15,10 @@ pub enum MhError {
 impl MhError {
     pub fn is_retryable_database_lock(error: &anyhow::Error) -> bool {
         error.chain().any(|cause| {
-            if matches!(cause.downcast_ref::<MhError>(), Some(MhError::DatabaseLocked)) {
+            if matches!(
+                cause.downcast_ref::<MhError>(),
+                Some(MhError::DatabaseLocked)
+            ) {
                 return true;
             }
             let message = cause.to_string();

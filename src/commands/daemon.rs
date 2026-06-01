@@ -1,9 +1,7 @@
 use anyhow::Result;
 
 use crate::cli::DaemonArgs;
-use crate::daemon::{
-    daemon_status, install_systemd_unit, run_daemon, start_daemon, stop_daemon,
-};
+use crate::daemon::{daemon_status, install_systemd_unit, run_daemon, start_daemon, stop_daemon};
 
 pub fn run(args: DaemonArgs) -> Result<()> {
     match args.action {
@@ -23,10 +21,7 @@ pub fn run(args: DaemonArgs) -> Result<()> {
                         .unwrap_or_else(|| "unknown".to_string())
                 );
             } else {
-                println!(
-                    "not running (socket: {})",
-                    status.socket_path.display()
-                );
+                println!("not running (socket: {})", status.socket_path.display());
             }
             Ok(())
         }

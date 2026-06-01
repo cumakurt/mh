@@ -5,9 +5,7 @@ use chrono::{Duration, Utc};
 use rusqlite::types::Value;
 
 use crate::config;
-use crate::models::{
-    AuditRow, CommandRow, SnippetRow, StatsPeriod,
-};
+use crate::models::{AuditRow, CommandRow, SnippetRow, StatsPeriod};
 
 pub(crate) const COMMAND_ROW_SELECT_JOIN: &str =
     "SELECT c.id, c.command, c.cwd, c.shell, c.username, c.hostname, c.exit_code,
@@ -131,16 +129,8 @@ pub(crate) fn normalize_tags(tags: &[String]) -> Vec<String> {
     normalized
 }
 
-pub(crate) fn normalize_date_bound(value: &str, start: bool) -> String {
-    if value.contains('T') {
-        return value.to_string();
-    }
-
-    if start {
-        format!("{value}T00:00:00+00:00")
-    } else {
-        format!("{value}T23:59:59+00:00")
-    }
+pub(crate) fn normalize_date_bound(value: &str, start: bool) -> anyhow::Result<String> {
+    crate::timestamp::normalize_date_bound(value, start)
 }
 
 pub(crate) fn period_where(period: StatsPeriod) -> (String, Vec<Value>) {

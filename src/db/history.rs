@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
-use rusqlite::types::Value;
 use rusqlite::params_from_iter;
+use rusqlite::types::Value;
 
 use super::Database;
 use super::helpers::*;
@@ -24,7 +24,7 @@ impl Database {
 
         if let Some(before) = before.filter(|value| !value.is_empty()) {
             sql.push_str(" AND started_at <= ?");
-            values.push(Value::Text(normalize_date_bound(before, false)));
+            values.push(Value::Text(normalize_date_bound(before, false)?));
         }
 
         if keep_pinned {
@@ -73,5 +73,4 @@ impl Database {
             .collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(rows)
     }
-
 }

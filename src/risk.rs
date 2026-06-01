@@ -35,6 +35,69 @@ pub struct RiskAssessment {
     pub description: String,
 }
 
+const RISK_PATTERNS: &[(&str, &str, RiskLevel, &str)] = &[
+    (
+        r"(?i)\brm\s+(-[^\s]*r[^\s]*\s+|-[^\s]*f[^\s]*\s+)*(/|\~|/\*|/\.\.?|/\S*)",
+        "rm_recursive_root",
+        RiskLevel::Critical,
+        "Recursive delete targeting root or system paths",
+    ),
+    (
+        r"(?i)\bdd\s+if=/dev/(sd[a-z]|nvme\d+n\d+|vd[a-z]|xvd[a-z])",
+        "disk_overwrite",
+        RiskLevel::Critical,
+        "Direct disk overwrite with dd or similar",
+    ),
+    (
+        r"(?i)\b(mkfs\.|mkfs\s|mke2fs|wipefs|parted\s+.*mklabel)",
+        "filesystem_format",
+        RiskLevel::Critical,
+        "Filesystem formatting command",
+    ),
+    (
+        r":\(\)\{\s*:\|\:&\s*\};:",
+        "fork_bomb",
+        RiskLevel::Critical,
+        "Fork bomb or runaway process pattern",
+    ),
+    (
+        r"(?i)\b(chmod|chown)\s+(-[^\s]*R[^\s]*\s+|-[^\s]*r[^\s]*\s+)*(/|\~|/\*)",
+        "permission_chown_root",
+        RiskLevel::High,
+        "Recursive permission or ownership change on broad paths",
+    ),
+    (
+        r"(?i)\biptables\s+(-[^\s]*F[^\s]*\s+|-F\b|--flush\b)",
+        "iptables_flush",
+        RiskLevel::High,
+        "Firewall rules flush or disable",
+    ),
+    (
+        r"(?i)\b(shutdown|reboot|poweroff|init\s+0|systemctl\s+(poweroff|reboot|halt))\b",
+        "shutdown_reboot",
+        RiskLevel::High,
+        "Immediate shutdown or reboot",
+    ),
+    (
+        r"(?i)(curl|wget)\s+[^\n|]+\|\s*(ba)?sh\b",
+        "curl_pipe_shell",
+        RiskLevel::High,
+        "Remote script piped directly into a shell",
+    ),
+    (
+        r"(?i)\brm\s+(-[^\s]*r[^\s]*\s+|-[^\s]*f[^\s]*\s+)+[^\s]+",
+        "recursive_delete",
+        RiskLevel::Medium,
+        "Recursive delete on a non-trivial path",
+    ),
+    (
+        r"(?i)\bchmod\s+(-[^\s]*R[^\s]*\s+|-[^\s]*r[^\s]*\s+)+",
+        "chmod_recursive",
+        RiskLevel::Medium,
+        "Recursive permission change",
+    ),
+];
+
 pub fn list_rules() -> &'static [RiskRule] {
     static RULES: &[RiskRule] = &[
         RiskRule {
@@ -97,12 +160,12 @@ pub fn assess_command(command: &str) -> Option<RiskAssessment> {
         return None;
     }
 
-    for (regex, rule_id, level, description) in compiled_rules() {
-        if regex.is_match(trimmed) {
+    for rule in compiled_rules() {
+        if rule.regex.is_match(trimmed) {
             return Some(RiskAssessment {
-                level: *level,
-                rule_id: (*rule_id).to_string(),
-                description: (*description).to_string(),
+                level: rule.level,
+                rule_id: rule.rule_id.to_string(),
+                description: rule.description.to_string(),
             });
         }
     }
@@ -114,90 +177,26 @@ pub fn is_at_least(level: RiskLevel, minimum: RiskLevel) -> bool {
     level >= minimum
 }
 
-fn compiled_rules() -> &'static [(&'static Regex, &'static str, RiskLevel, &'static str)] {
-    static RULES: OnceLock<Vec<(&'static Regex, &'static str, RiskLevel, &'static str)>> =
-        OnceLock::new();
+struct CompiledRiskRule {
+    regex: Regex,
+    rule_id: &'static str,
+    level: RiskLevel,
+    description: &'static str,
+}
+
+fn compiled_rules() -> &'static [CompiledRiskRule] {
+    static RULES: OnceLock<Vec<CompiledRiskRule>> = OnceLock::new();
 
     RULES.get_or_init(|| {
-        let patterns: &[(&str, &str, RiskLevel, &str)] = &[
-            (
-                r"(?i)\brm\s+(-[^\s]*r[^\s]*\s+|-[^\s]*f[^\s]*\s+)*(/|\~|/\*|/\.\.?|/\S*)",
-                "rm_recursive_root",
-                RiskLevel::Critical,
-                "Recursive delete targeting root or system paths",
-            ),
-            (
-                r"(?i)\bdd\s+if=/dev/(sd[a-z]|nvme\d+n\d+|vd[a-z]|xvd[a-z])",
-                "disk_overwrite",
-                RiskLevel::Critical,
-                "Direct disk overwrite with dd or similar",
-            ),
-            (
-                r"(?i)\b(mkfs\.|mkfs\s|mke2fs|wipefs|parted\s+.*mklabel)",
-                "filesystem_format",
-                RiskLevel::Critical,
-                "Filesystem formatting command",
-            ),
-            (
-                r":\(\)\{\s*:\|\:&\s*\};:",
-                "fork_bomb",
-                RiskLevel::Critical,
-                "Fork bomb or runaway process pattern",
-            ),
-            (
-                r"(?i)\b(chmod|chown)\s+(-[^\s]*R[^\s]*\s+|-[^\s]*r[^\s]*\s+)*(/|\~|/\*)",
-                "permission_chown_root",
-                RiskLevel::High,
-                "Recursive permission or ownership change on broad paths",
-            ),
-            (
-                r"(?i)\biptables\s+(-[^\s]*F[^\s]*\s+|-F\b|--flush\b)",
-                "iptables_flush",
-                RiskLevel::High,
-                "Firewall rules flush or disable",
-            ),
-            (
-                r"(?i)\b(shutdown|reboot|poweroff|init\s+0|systemctl\s+(poweroff|reboot|halt))\b",
-                "shutdown_reboot",
-                RiskLevel::High,
-                "Immediate shutdown or reboot",
-            ),
-            (
-                r"(?i)(curl|wget)\s+[^\n|]+\|\s*(ba)?sh\b",
-                "curl_pipe_shell",
-                RiskLevel::High,
-                "Remote script piped directly into a shell",
-            ),
-            (
-                r"(?i)\brm\s+(-[^\s]*r[^\s]*\s+|-[^\s]*f[^\s]*\s+)+[^\s]+",
-                "recursive_delete",
-                RiskLevel::Medium,
-                "Recursive delete on a non-trivial path",
-            ),
-            (
-                r"(?i)\bchmod\s+(-[^\s]*R[^\s]*\s+|-[^\s]*r[^\s]*\s+)+",
-                "chmod_recursive",
-                RiskLevel::Medium,
-                "Recursive permission change",
-            ),
-        ];
-
-        let regexes: Vec<Regex> = patterns
+        RISK_PATTERNS
             .iter()
-            .map(|(pattern, ..)| Regex::new(pattern).expect("risk regex is valid"))
-            .collect();
-
-        regexes
-            .into_iter()
-            .enumerate()
-            .map(|(index, regex)| {
-                let (_, rule_id, level, description) = patterns[index];
-                (
-                    Box::leak(Box::new(regex)) as &'static Regex,
+            .filter_map(|(pattern, rule_id, level, description)| {
+                Regex::new(pattern).ok().map(|regex| CompiledRiskRule {
+                    regex,
                     rule_id,
-                    level,
+                    level: *level,
                     description,
-                )
+                })
             })
             .collect()
     })
@@ -224,5 +223,15 @@ mod tests {
     #[test]
     fn ignores_safe_ls_command() {
         assert!(assess_command("ls -la").is_none());
+    }
+
+    #[test]
+    fn built_in_risk_regexes_compile() {
+        for (pattern, rule_id, ..) in RISK_PATTERNS {
+            assert!(
+                Regex::new(pattern).is_ok(),
+                "risk rule {rule_id} has an invalid regex"
+            );
+        }
     }
 }

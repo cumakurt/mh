@@ -8,6 +8,15 @@ fn parses_top_level_help_command() {
 }
 
 #[test]
+fn parses_doctor_json_flag() {
+    let cli = Cli::try_parse_from(["mh", "doctor", "--json"]).expect("doctor json");
+    let mh::cli::Command::Doctor(args) = cli.command else {
+        panic!("expected doctor command");
+    };
+    assert!(args.json);
+}
+
+#[test]
 fn parses_doctor_strict_flag() {
     let cli = Cli::try_parse_from(["mh", "doctor", "--strict"]).expect("doctor strict");
     if let mh::cli::Command::Doctor(args) = cli.command {
@@ -42,7 +51,8 @@ fn parses_search_with_new_filters() {
 
 #[test]
 fn parses_daemon_install() {
-    let cli = Cli::try_parse_from(["mh", "daemon", "install"]).expect("daemon install should parse");
+    let cli =
+        Cli::try_parse_from(["mh", "daemon", "install"]).expect("daemon install should parse");
     assert!(matches!(
         cli.command,
         mh::cli::Command::Daemon(mh::cli::DaemonArgs {
@@ -64,14 +74,8 @@ fn parses_daemon_status() {
 
 #[test]
 fn parses_record_no_daemon_flag() {
-    let cli = Cli::try_parse_from([
-        "mh",
-        "record",
-        "--no-daemon",
-        "--command",
-        "ls",
-    ])
-    .expect("record should parse");
+    let cli = Cli::try_parse_from(["mh", "record", "--no-daemon", "--command", "ls"])
+        .expect("record should parse");
 
     if let mh::cli::Command::Record(args) = cli.command {
         assert!(args.no_daemon);

@@ -92,11 +92,7 @@ fn main() {
 
     let fts_start = Instant::now();
     for _ in 0..50 {
-        black_box(
-            database
-                .search_commands(&fts_filters)
-                .expect("fts search"),
-        );
+        black_box(database.search_commands(&fts_filters).expect("fts search"));
     }
     let fts_elapsed = fts_start.elapsed();
     let fts_ms = fts_elapsed.as_secs_f64() * 1000.0 / 50.0;

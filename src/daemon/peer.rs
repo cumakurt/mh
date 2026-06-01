@@ -14,9 +14,7 @@ pub fn verify_peer_credentials(stream: &UnixStream) -> Result<()> {
     let peer_uid = peer_uid(stream)?;
     let expected = unsafe { libc::geteuid() };
     if peer_uid != expected {
-        bail!(
-            "daemon rejected connection from uid {peer_uid} (expected {expected})"
-        );
+        bail!("daemon rejected connection from uid {peer_uid} (expected {expected})");
     }
     Ok(())
 }
@@ -52,15 +50,12 @@ fn read_bounded_line_limited(
             break;
         }
         if buffer.len() >= max_bytes {
-            bail!(
-                "daemon {label} exceeds maximum size of {max_bytes} bytes"
-            );
+            bail!("daemon {label} exceeds maximum size of {max_bytes} bytes");
         }
         buffer.push(ch);
     }
 
-    String::from_utf8(buffer)
-        .with_context(|| format!("daemon {label} is not valid UTF-8"))
+    String::from_utf8(buffer).with_context(|| format!("daemon {label} is not valid UTF-8"))
 }
 
 #[cfg(target_os = "linux")]

@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::{BufReader, Write};
 use std::os::unix::net::{UnixListener, UnixStream};
+use std::path::Path;
 use std::process;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -181,14 +182,10 @@ RestartSec=2
 [Install]
 WantedBy=default.target
 "#,
-        exe.display()
+        systemd_quote_arg(&exe)
     );
-    fs::write(&unit_path, &unit_body).with_context(|| {
-        format!(
-            "failed to write systemd unit {}",
-            unit_path.display()
-        )
-    })?;
+    config::write_private_file(&unit_path, unit_body.as_bytes())
+        .with_context(|| format!("failed to write systemd unit {}", unit_path.display()))?;
 
     println!("Wrote {}", unit_path.display());
     println!("Enable with:");
@@ -270,17 +267,26 @@ fn handle_connection(
 
 fn write_pid_file() -> Result<()> {
     let pid_path = record_pid_path();
-    if let Some(parent) = pid_path.parent() {
-        config::ensure_private_directory(parent)?;
-    }
-    fs::write(&pid_path, process::id().to_string()).with_context(|| {
-        format!(
-            "failed to write daemon pid file {}",
-            pid_path.display()
-        )
-    })?;
-    config::restrict_file_permissions(&pid_path)?;
+    config::write_private_file(&pid_path, process::id().to_string().as_bytes())
+        .with_context(|| format!("failed to write daemon pid file {}", pid_path.display()))?;
     Ok(())
+}
+
+fn systemd_quote_arg(path: &Path) -> String {
+    let value = path.to_string_lossy();
+    let mut quoted = String::with_capacity(value.len() + 2);
+    quoted.push('"');
+    for character in value.chars() {
+        match character {
+            '\\' => quoted.push_str(r"\\"),
+            '"' => quoted.push_str(r#"\""#),
+            '\n' | '\r' | '\t' => quoted.push(' '),
+            character if character.is_control() => quoted.push(' '),
+            character => quoted.push(character),
+        }
+    }
+    quoted.push('"');
+    quoted
 }
 
 fn read_pid_file() -> Result<u32> {
@@ -317,7 +323,9 @@ extern "C" fn handle_signal(_: i32) {
     SHUTDOWN.store(true, Ordering::Relaxed);
 }
 
-fn precompute_record_options(payload: &record_pipeline::RecordPayload) -> record_pipeline::RecordOptions {
+fn precompute_record_options(
+    payload: &record_pipeline::RecordPayload,
+) -> record_pipeline::RecordOptions {
     let cwd = payload.cwd.clone().or_else(|| {
         std::env::current_dir()
             .ok()
@@ -346,7 +354,22 @@ fn reject_connection(mut stream: UnixStream, message: &str) -> Result<()> {
 }
 
 fn is_policy_denied(error: &anyhow::Error) -> bool {
-    error
-        .chain()
-        .any(|cause| matches!(cause.downcast_ref::<MhError>(), Some(MhError::PolicyDenied(_))))
+    error.chain().any(|cause| {
+        matches!(
+            cause.downcast_ref::<MhError>(),
+            Some(MhError::PolicyDenied(_))
+        )
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn systemd_quote_arg_escapes_special_characters() {
+        let quoted = systemd_quote_arg(Path::new("/tmp/mh \"dev\"\\bin"));
+
+        assert_eq!(quoted, r#""/tmp/mh \"dev\"\\bin""#);
+    }
 }

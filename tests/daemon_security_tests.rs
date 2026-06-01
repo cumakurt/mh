@@ -1,6 +1,6 @@
 use std::io::Write;
 use std::os::unix::net::UnixStream;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LazyLock, Mutex};
 use std::time::Duration;
 
 use mh::config::AppConfig;
@@ -8,6 +8,8 @@ use mh::daemon::peer::{MAX_REQUEST_BYTES, read_bounded_line, verify_peer_credent
 use mh::daemon::protocol::{DaemonRequest, DaemonResponse};
 use mh::db::Database;
 use mh::record_pipeline::RecordPayload;
+
+static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 #[test]
 fn peer_credentials_accept_same_process_connections() {
@@ -88,7 +90,42 @@ fn read_bounded_line_rejects_oversized_requests() {
 }
 
 #[test]
+#[cfg(unix)]
+fn daemon_rejects_world_writable_socket_parent() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let _guard = ENV_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let parent = temp_dir.path().join("unsafe-socket-parent");
+    std::fs::create_dir_all(&parent).expect("parent dir");
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777))
+        .expect("chmod parent");
+
+    let original_socket = std::env::var_os("MH_DAEMON_SOCKET");
+    unsafe {
+        std::env::set_var("MH_DAEMON_SOCKET", parent.join("record.sock"));
+    }
+
+    let result = mh::daemon::run_daemon();
+
+    unsafe {
+        match original_socket {
+            Some(value) => std::env::set_var("MH_DAEMON_SOCKET", value),
+            None => std::env::remove_var("MH_DAEMON_SOCKET"),
+        }
+    }
+
+    let error = result.expect_err("world-writable socket parent should fail");
+    assert!(format!("{error:#}").contains("writable by group or others"));
+}
+
+#[test]
 fn daemon_record_roundtrip_respects_security_masking() {
+    let _guard = ENV_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
     let temp_dir = tempfile::tempdir().expect("temp dir");
     let socket_path = temp_dir.path().join("record.sock");
     // SAFETY: test-local environment overrides.
@@ -103,7 +140,9 @@ fn daemon_record_roundtrip_respects_security_masking() {
         .join("history.db")
         .to_string_lossy()
         .to_string();
-    config.write_to_path(&mh::config::config_path()).expect("write config");
+    config
+        .write_to_path(&mh::config::config_path())
+        .expect("write config");
 
     let listener = std::os::unix::net::UnixListener::bind(&socket_path).expect("bind");
     let database = Arc::new(Mutex::new(Database::open(&config).expect("open")));
@@ -134,7 +173,12 @@ fn daemon_record_roundtrip_respects_security_masking() {
             DaemonRequest::Ping => DaemonResponse::success(),
         };
         let mut stream = reader.into_inner();
-        writeln!(stream, "{}", serde_json::to_string(&response).expect("json")).expect("write");
+        writeln!(
+            stream,
+            "{}",
+            serde_json::to_string(&response).expect("json")
+        )
+        .expect("write");
         stream.flush().expect("flush");
     });
 
@@ -154,19 +198,18 @@ fn daemon_record_roundtrip_respects_security_masking() {
             env_context: None,
         }),
     };
-    writeln!(
-        client,
-        "{}",
-        serde_json::to_string(&request).expect("json")
-    )
-    .expect("write");
+    writeln!(client, "{}", serde_json::to_string(&request).expect("json")).expect("write");
     client.flush().expect("flush");
 
     let mut reader = std::io::BufReader::new(client);
     let mut line = String::new();
     std::io::BufRead::read_line(&mut reader, &mut line).expect("response");
     let response: DaemonResponse = serde_json::from_str(line.trim()).expect("decode");
-    assert!(response.ok, "daemon should accept record: {:?}", response.error);
+    assert!(
+        response.ok,
+        "daemon should accept record: {:?}",
+        response.error
+    );
 
     handle.join().expect("server thread");
 

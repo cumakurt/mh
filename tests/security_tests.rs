@@ -32,12 +32,18 @@ fn masks_mysql_password_with_space() {
 
 #[test]
 fn masks_curl_long_user_flag() {
-    assert_masked("curl --user admin:secret123 https://api.example.com", "secret123");
+    assert_masked(
+        "curl --user admin:secret123 https://api.example.com",
+        "secret123",
+    );
 }
 
 #[test]
 fn masks_wget_password_flag() {
-    assert_masked("wget --password=secret123 https://example.com/file", "secret123");
+    assert_masked(
+        "wget --password=secret123 https://example.com/file",
+        "secret123",
+    );
 }
 
 #[test]
@@ -57,7 +63,8 @@ fn masks_database_connection_url() {
 fn skips_leading_tab_prefixed_command() {
     let _guard = IsolatedConfigHome::new();
     let config = AppConfig::default();
-    let decision = process_command("\techo hidden", &config).expect("security processing should succeed");
+    let decision =
+        process_command("\techo hidden", &config).expect("security processing should succeed");
     assert!(matches!(decision.action, SecurityAction::Skipped(_)));
 }
 
@@ -194,20 +201,18 @@ fn does_not_flag_grep_uppercase_p_flag() {
 #[test]
 fn does_not_flag_benign_password_mentions() {
     assert!(
-        !contains_secret("echo password policy documentation").expect("contains_secret should succeed")
+        !contains_secret("echo password policy documentation")
+            .expect("contains_secret should succeed")
     );
-    assert!(
-        !contains_secret("grep -r token README.md").expect("contains_secret should succeed")
-    );
-    assert!(
-        !contains_secret("man sshpass").expect("contains_secret should succeed")
-    );
+    assert!(!contains_secret("grep -r token README.md").expect("contains_secret should succeed"));
+    assert!(!contains_secret("man sshpass").expect("contains_secret should succeed"));
 }
 
 #[test]
 fn still_detects_exported_aws_secret_without_broad_keyword_match() {
     assert!(
-        contains_secret("export AWS_SECRET_ACCESS_KEY=xxxx").expect("contains_secret should succeed")
+        contains_secret("export AWS_SECRET_ACCESS_KEY=xxxx")
+            .expect("contains_secret should succeed")
     );
 }
 
@@ -219,7 +224,8 @@ fn masks_aws_secret_without_export_prefix() {
 #[test]
 fn does_not_flag_psql_port_flag() {
     assert!(
-        !contains_secret("psql -p 5432 -h localhost -U admin app").expect("contains_secret should succeed"),
+        !contains_secret("psql -p 5432 -h localhost -U admin app")
+            .expect("contains_secret should succeed"),
         "psql -p is a port flag, not a password"
     );
     let masked = mask_secrets("psql -p 5432 -h localhost -U admin app")
@@ -247,7 +253,10 @@ fn masks_authorization_basic_header() {
 
 #[test]
 fn masks_kubectl_token_with_space() {
-    assert_masked("kubectl config set-credentials user --token abc123", "abc123");
+    assert_masked(
+        "kubectl config set-credentials user --token abc123",
+        "abc123",
+    );
 }
 
 #[test]
@@ -258,7 +267,8 @@ fn skips_recording_when_private_mode_env_is_set() {
     unsafe {
         std::env::set_var(&env_name, "1");
     }
-    let decision = process_command("echo private", &config).expect("security processing should succeed");
+    let decision =
+        process_command("echo private", &config).expect("security processing should succeed");
     assert!(matches!(decision.action, SecurityAction::Skipped(_)));
     unsafe {
         std::env::remove_var(&env_name);
@@ -272,7 +282,8 @@ fn skips_recording_when_private_mode_marker_exists() {
     let config = AppConfig::default();
     let marker = guard.config_dir().join("private");
     std::fs::write(&marker, "1").expect("private marker");
-    let decision = process_command("echo private", &config).expect("security processing should succeed");
+    let decision =
+        process_command("echo private", &config).expect("security processing should succeed");
     assert!(matches!(decision.action, SecurityAction::Skipped(_)));
 }
 
@@ -283,7 +294,8 @@ fn break_glass_overrides_private_mode() {
     let marker = guard.config_dir().join("private");
     std::fs::write(&marker, "1").expect("private marker");
     mh::break_glass::activate("incident response", 1).expect("break-glass activate");
-    let decision = process_command("echo break-glass", &config).expect("security processing should succeed");
+    let decision =
+        process_command("echo break-glass", &config).expect("security processing should succeed");
     assert_eq!(decision.action, SecurityAction::Store);
     mh::break_glass::deactivate().expect("break-glass deactivate");
 }
@@ -311,4 +323,59 @@ fn does_not_flag_random_long_numeric_id() {
         !contains_secret("echo order-id 1234567890123456 placeholder").expect("contains_secret"),
         "non-Luhn numeric strings should not be treated as credit cards"
     );
+}
+
+#[test]
+fn skips_or_masks_inline_private_key_pem() {
+    let pem = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ\n-----END OPENSSH PRIVATE KEY-----";
+    let command = format!("cat <<'EOF' > id_ed25519\n{pem}\nEOF");
+    assert!(
+        contains_secret(&command).expect("contains_secret"),
+        "inline PEM private keys must be treated as secrets"
+    );
+    let _guard = IsolatedConfigHome::new();
+    let config = AppConfig::default();
+    let decision = process_command(&command, &config).expect("security processing should succeed");
+    assert!(
+        matches!(
+            decision.action,
+            SecurityAction::Masked | SecurityAction::Skipped(_)
+        ),
+        "PEM material must not be stored verbatim"
+    );
+    assert!(!decision.command.contains("b3BlbnNzaC1rZXk"));
+}
+
+#[test]
+fn masks_npm_config_auth_token() {
+    assert_masked(
+        "npm_config_//registry.npmjs.org/:_authToken=npm_secret_token",
+        "npm_secret_token",
+    );
+}
+
+#[test]
+fn masks_helm_set_secret_value() {
+    assert_masked(
+        "helm upgrade app chart --set secret.password=topsecret",
+        "topsecret",
+    );
+}
+
+#[test]
+fn critical_secret_command_regression_suite() {
+    let cases = [
+        ("mysql -u root -pSecret123", "Secret123"),
+        (
+            r#"curl -H "Authorization: Bearer abc123" https://api.example.com"#,
+            "abc123",
+        ),
+        ("export AWS_SECRET_ACCESS_KEY=xxxx", "xxxx"),
+        ("sshpass -p password ssh root@1.1.1.1", "password"),
+        ("docker login -u user -p password", "password"),
+        ("kubectl config set-credentials user --token=abc", "abc"),
+    ];
+    for (command, secret) in cases {
+        assert_masked(command, secret);
+    }
 }

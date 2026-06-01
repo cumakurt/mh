@@ -51,8 +51,7 @@ pub fn run(args: AuditArgs) -> Result<()> {
     let mut display_rows = rows;
     for row in &mut display_rows {
         if let Some(command) = row.raw_command.as_ref() {
-            row.raw_command =
-                Some(crate::security::redact_for_audit(command, &config)?);
+            row.raw_command = Some(crate::security::redact_for_audit(command, &config)?);
         }
     }
 

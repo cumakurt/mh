@@ -36,7 +36,5 @@ fn main() {
     }
     let elapsed = start.elapsed();
     let per_op_ms = elapsed.as_secs_f64() * 1000.0 / iterations as f64;
-    println!(
-        "record pipeline bench: {iterations} records in {elapsed:?} ({per_op_ms:.2} ms/op)"
-    );
+    println!("record pipeline bench: {iterations} records in {elapsed:?} ({per_op_ms:.2} ms/op)");
 }

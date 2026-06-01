@@ -52,7 +52,7 @@ jobs:
           awk -v ms="$ms" 'BEGIN { if (ms > 20.0) { printf "record pipeline bench %.2f ms/op exceeds 20 ms threshold\n", ms; exit 1 } }'
           echo "record pipeline bench ${ms} ms/op (threshold 20 ms)"
 
-      - name: Search benchmark threshold
+      - name: Search benchmark threshold (10k rows)
         run: |
           output="$(MH_BENCH_ASSERT=1 cargo bench --bench search_bench 2>&1 | tee /dev/stderr)"
           fts_ms="$(echo "$output" | sed -n 's/.*FTS search avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
@@ -62,6 +62,24 @@ jobs:
           test -n "$last_ms" || { echo "search benchmark missing last-50 ms/op"; exit 1; }
           test -n "$fuzzy_ms" || { echo "search benchmark missing fuzzy ms/op"; exit 1; }
           echo "search bench fts=${fts_ms}ms last-50=${last_ms}ms fuzzy=${fuzzy_ms}ms"
+
+      - name: Search benchmark threshold (100k rows)
+        run: |
+          output="$(
+            MH_BENCH_SEARCH_SIZE=100000 MH_BENCH_ASSERT=1 \
+            MH_BENCH_MAX_FTS_MS=100 MH_BENCH_MAX_LAST_MS=50 MH_BENCH_MAX_FUZZY_MS=250 \
+            cargo bench --bench search_bench 2>&1 | tee /dev/stderr
+          )"
+          fts_ms="$(echo "$output" | sed -n 's/.*FTS search avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          last_ms="$(echo "$output" | sed -n 's/.*last-50 avg \([0-9.]*\) ms\/op.*/\1/p' | tail -1)"
+          echo "search bench 100k fts=${fts_ms}ms last-50=${last_ms}ms"
+
+      - name: Doctor JSON report
+        run: |
+          cargo build --release
+          report="$(./target/release/mh doctor --json)"
+          echo "$report" | jq -e '.status and .warning_count != null and (.checks | type) == "array" and .summary.mh_version'
+          echo "doctor json status=$(echo "$report" | jq -r '.status') warnings=$(echo "$report" | jq -r '.warning_count')"
 
       - name: Security audit
         run: |

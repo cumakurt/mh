@@ -160,6 +160,9 @@ pub struct DoctorArgs {
     /// Exit with a non-zero status when warnings are reported.
     #[arg(long)]
     pub strict: bool,
+    /// Emit a machine-readable JSON report on stdout (no styled text).
+    #[arg(long)]
+    pub json: bool,
 }
 
 #[derive(Debug, Args)]

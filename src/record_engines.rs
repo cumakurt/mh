@@ -88,7 +88,10 @@ mod tests {
         let saved = [
             ("XDG_CONFIG_HOME", std::env::var("XDG_CONFIG_HOME").ok()),
             ("MH_CONFIG", std::env::var("MH_CONFIG").ok()),
-            ("MH_CONFIG_NO_CACHE", std::env::var("MH_CONFIG_NO_CACHE").ok()),
+            (
+                "MH_CONFIG_NO_CACHE",
+                std::env::var("MH_CONFIG_NO_CACHE").ok(),
+            ),
         ];
         unsafe {
             std::env::set_var("XDG_CONFIG_HOME", temp_dir.path());

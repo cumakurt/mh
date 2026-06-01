@@ -757,6 +757,108 @@ fn sample_record(
     }
 }
 
+fn base_filters() -> SearchFilters {
+    SearchFilters {
+        query: None,
+        cwd: None,
+        failed: false,
+        success: false,
+        user: None,
+        shell: None,
+        after: None,
+        before: None,
+        regex: false,
+        fuzzy: false,
+        fts: false,
+        tag: None,
+        category: None,
+        pinned: false,
+        duration_gt: None,
+        duration_lt: None,
+        hostname: None,
+        ssh: false,
+        root: false,
+        limit: 10,
+        session_id: None,
+        git_repo: None,
+        git_branch: None,
+        git_commit: None,
+        environment: None,
+    }
+}
+
+#[test]
+fn literal_search_escapes_like_wildcards() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let database =
+        Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
+    database
+        .insert_command(&sample_record("echo 100% ready", Some(0), None, None))
+        .expect("insert percent command");
+    database
+        .insert_command(&sample_record("git status", Some(0), None, None))
+        .expect("insert git command");
+
+    let mut filters = base_filters();
+    filters.query = Some("%".to_string());
+    let rows = database.search_commands(&filters).expect("literal search");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].command, "echo 100% ready");
+}
+
+#[test]
+fn cwd_filter_escapes_like_wildcards() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let database =
+        Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
+    let mut with_underscore = sample_record("ls", Some(0), None, None);
+    with_underscore.cwd = Some("/tmp/a_b".to_string());
+    let mut without_underscore = sample_record("pwd", Some(0), None, None);
+    without_underscore.cwd = Some("/tmp/acb".to_string());
+    database
+        .insert_command(&with_underscore)
+        .expect("insert underscore cwd");
+    database
+        .insert_command(&without_underscore)
+        .expect("insert plain cwd");
+
+    let mut filters = base_filters();
+    filters.cwd = Some("_".to_string());
+    let rows = database.search_commands(&filters).expect("cwd search");
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].cwd.as_deref(), Some("/tmp/a_b"));
+}
+
+#[test]
+fn fts_search_with_only_operators_returns_empty_result() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let database =
+        Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
+    database
+        .insert_command(&sample_record("docker ps", Some(0), None, None))
+        .expect("insert command");
+
+    let mut filters = base_filters();
+    filters.query = Some("*** -- ++".to_string());
+    filters.fts = true;
+    let rows = database.search_commands(&filters).expect("fts search");
+    assert!(rows.is_empty());
+}
+
+#[test]
+fn search_rejects_invalid_date_bounds() {
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let database =
+        Database::open_path(temp_dir.path().join("history.db")).expect("database should open");
+
+    let mut filters = base_filters();
+    filters.after = Some("yesterday".to_string());
+    let error = database
+        .search_commands(&filters)
+        .expect_err("invalid date should fail");
+    assert!(format!("{error:#}").contains("invalid date bound"));
+}
+
 #[test]
 fn round_trips_environment_tier_on_command_rows() {
     let temp_dir = tempfile::tempdir().expect("temp dir should be created");
@@ -821,6 +923,45 @@ fn enables_wal_mode_and_restrictive_permissions() {
             & 0o777;
         assert_eq!(mode, 0o600);
     }
+}
+
+#[test]
+#[cfg(unix)]
+fn opening_database_does_not_chmod_existing_parent_directory() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let parent = temp_dir.path().join("db-parent");
+    std::fs::create_dir_all(&parent).expect("parent dir");
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o755))
+        .expect("chmod parent");
+
+    Database::open_path(parent.join("history.db")).expect("database should open");
+
+    let mode = std::fs::metadata(&parent)
+        .expect("parent metadata")
+        .permissions()
+        .mode()
+        & 0o777;
+    assert_eq!(mode, 0o755);
+}
+
+#[test]
+#[cfg(unix)]
+fn opening_database_rejects_world_writable_parent_directory() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempfile::tempdir().expect("temp dir");
+    let parent = temp_dir.path().join("unsafe-db-parent");
+    std::fs::create_dir_all(&parent).expect("parent dir");
+    std::fs::set_permissions(&parent, std::fs::Permissions::from_mode(0o777))
+        .expect("chmod parent");
+
+    let error = match Database::open_path(parent.join("history.db")) {
+        Ok(_) => panic!("world-writable database parent should fail"),
+        Err(error) => error,
+    };
+    assert!(format!("{error:#}").contains("writable by group or others"));
 }
 
 #[test]

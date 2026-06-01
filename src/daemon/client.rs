@@ -10,8 +10,8 @@ use crate::daemon::protocol::{DaemonRequest, DaemonResponse};
 use crate::daemon::record_socket_path;
 use crate::record_pipeline::RecordPayload;
 
-/// Slightly above SQLite `busy_timeout` (5s) so the daemon can finish under load.
-const IO_TIMEOUT_MS: u64 = 6_000;
+/// Keep shell hooks responsive; direct SQLite fallback is only used when no daemon is present.
+const IO_TIMEOUT_MS: u64 = 750;
 
 #[derive(Debug)]
 pub enum DaemonError {
@@ -64,8 +64,7 @@ fn ping(path: &std::path::Path) -> Result<()> {
 }
 
 fn exchange(path: &std::path::Path, request: &DaemonRequest) -> Result<DaemonResponse> {
-    let mut stream =
-        UnixStream::connect(path).context("failed to connect to mh record daemon")?;
+    let mut stream = UnixStream::connect(path).context("failed to connect to mh record daemon")?;
     stream
         .set_read_timeout(Some(Duration::from_millis(IO_TIMEOUT_MS)))
         .context("failed to set read timeout")?;
@@ -83,20 +82,25 @@ fn exchange(path: &std::path::Path, request: &DaemonRequest) -> Result<DaemonRes
 }
 
 fn map_daemon_exchange_error(error: anyhow::Error) -> DaemonError {
-    if error
+    let mut has_unavailable_io = false;
+    for io in error
         .chain()
         .filter_map(|cause| cause.downcast_ref::<std::io::Error>())
-        .any(|io| {
-            matches!(
-                io.kind(),
-                std::io::ErrorKind::ConnectionRefused
-                    | std::io::ErrorKind::NotFound
-                    | std::io::ErrorKind::BrokenPipe
-                    | std::io::ErrorKind::WouldBlock
-                    | std::io::ErrorKind::TimedOut
-            )
-        })
     {
+        match io.kind() {
+            std::io::ErrorKind::TimedOut | std::io::ErrorKind::WouldBlock => {
+                return DaemonError::Failed(format!(
+                    "daemon did not respond within {IO_TIMEOUT_MS} ms; run: mh doctor"
+                ));
+            }
+            std::io::ErrorKind::ConnectionRefused
+            | std::io::ErrorKind::NotFound
+            | std::io::ErrorKind::BrokenPipe => has_unavailable_io = true,
+            _ => {}
+        }
+    }
+
+    if has_unavailable_io {
         DaemonError::Unavailable
     } else {
         DaemonError::Failed(format!("daemon request failed: {error:#}"))

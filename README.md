@@ -37,7 +37,8 @@ The database is local-first. By default, regular users and root have separate da
 - Up arrow binding that opens an interactive command history picker.
 - SQLite storage with FTS5 full-text search.
 - Command metadata: command text, working directory, shell, user, host, exit code, duration, session ID, TTY, SSH/root flags, Git repository, Git branch, Git commit, category, tags, environment context, and command hash.
-- Secret detection, masking, ignore rules, private mode, and audit logs.
+- Secret detection, masking, ignore rules, private mode, audit logs, and oversized-command rejection (256 KiB max).
+- `mh doctor` health checks with human-readable output or `--json` for automation/CI.
 - Safe file writes for config, exports, completions, and man pages (atomic temp+rename, mode `0600`, symlink rejection).
 - Unified policy engine with allow, warn, deny, and require-approval actions.
 - Tamper-evident audit log with SHA-256 hash chain verification.
@@ -140,6 +141,14 @@ Every command below was verified with `scripts/verify-all-commands.sh` in an iso
 
 ```bash
 mh doctor
+mh doctor --strict          # exit non-zero when warnings are reported
+mh doctor --json            # machine-readable report for scripts and CI
+```
+
+JSON output includes `status`, `warning_count`, `checks[]`, and `summary` (config/database paths, schema version, command count, daemon/private-mode state, mh version). Use with `jq` in pipelines:
+
+```bash
+mh doctor --json | jq -e '.status == "ok" and .warning_count == 0'
 ```
 
 #### `mh init`
@@ -1498,11 +1507,17 @@ Default skip rules:
 Default secret detection looks for sensitive terms and patterns such as:
 
 - `password`, `passwd`, `pwd` (context-aware; e.g. `psql -p5432` is a port, not a password)
-- `token`, `secret`, `api_key`, `authorization`, `bearer`
-- `private_key`, `database_url`
+- `token`, `secret`, `api_key`, `authorization`, `bearer` (including `Authorization: Basic`)
+- Inline PEM blocks (`-----BEGIN … PRIVATE KEY-----`)
+- Database URLs with credentials (`postgresql://user:pass@host/…`)
 - `aws_secret_access_key`, `aws_access_key_id` (including bare `KEY=value` without `export`)
-- `github_token`, `gitlab_token`
-- `sshpass`, `mysql_pwd`, `docker login -p`, `kubectl --token=`, `--from-literal=`
+- `github_token`, `gitlab_token`, `PGPASSWORD=`
+- `sshpass` (`-p` and `SSHPASS=`), `mysql`/`mariadb` `-p`, `docker login -p`
+- `kubectl --token=`, `--from-literal=`, `redis-cli -a`
+- `npm_config_*` variables containing `token`, `password`, `secret`, `auth`, or `key`
+- `helm … --set …password|secret|token…=`
+- `curl -u user:pass` and `curl --user` (scoped to `curl` only)
+- `wget --password=`
 - Credit-card-like number sequences (Luhn-validated to reduce false positives)
 
 Examples that are masked by default:
@@ -1516,12 +1531,14 @@ sshpass -p password ssh root@1.1.1.1
 docker login -u user -p password
 kubectl config set-credentials user --token=abc
 export GITHUB_TOKEN=ghp_secret
+helm upgrade app chart --set secret.password=topsecret
+npm_config_//registry.npmjs.org/:_authToken=npm_secret
 mysql --password supersecret
 sshpass -p mypassword ssh user@host
 curl https://user:pass@example.test
 ```
 
-Quoted and spaced argument forms are handled (`-p'Secret'`, `-p "pass"`, `-u user:pass` on `curl` only).
+Quoted and spaced argument forms are handled (`-p'Secret'`, `-p "pass"`, `-u user:pass` on `curl` only). Inline OpenSSH/PEM private key material in a command is masked or skipped.
 
 Switch from masking to skipping secret commands:
 
@@ -1806,6 +1823,8 @@ Run health checks:
 
 ```bash
 mh doctor
+mh doctor --strict    # non-zero exit when any warning is reported
+mh doctor --json      # structured report on stdout (no styled text)
 ```
 
 `mh doctor` checks:
@@ -1813,19 +1832,22 @@ mh doctor
 - Config file loading and validation (`mh config validate` hints on failure)
 - Environment overrides (`MH_CONFIG`, `MH_DB`) — rejects `MH_DB` when it points to a directory
 - Database opening and writable data directory
+- Config/database/WAL file permissions and symlink targets
 - Database file size versus configured max size
-- Available disk space on the database volume
+- Available disk space on the database volume (≥100 MB recommended free)
 - SQLite integrity
 - Schema version (currently **11**; pending migrations reported with upgrade hint)
+- Tamper-evident audit chain verification when enterprise tables exist
 - Command count
-- Security and policy engine configuration
+- Security and policy engine configuration (invalid ignore regex reported)
+- Duplicate shell hook lines and managed integration blocks
+- Private mode marker/env
 - Record daemon status (running, stale PID/socket, or `MH_NO_DAEMON`)
 - Sync enabled/configured state
 - Vault enabled state and keyring preference
-- Current shell
-- Whether `mh` is available in `PATH`
+- Current shell and whether `mh` is available in `PATH`
 
-Example:
+Human-readable example:
 
 ```text
 [OK]   Config loaded from /home/user/.config/mh/config.toml
@@ -1836,9 +1858,35 @@ Example:
 [INFO] Command count: 42
 [INFO] Record daemon: running (pid 12345)
 [INFO] Sync: disabled (no server configured)
-[INFO] Vault config: disabled (keyring preference: enabled)
+[INFO] Vault config: disabled (keyring: enabled)
 [INFO] Current shell: /usr/bin/zsh
 [OK]   Binary is available in PATH
+```
+
+JSON example (automation/CI):
+
+```bash
+mh doctor --json | jq .
+```
+
+```json
+{
+  "status": "ok",
+  "warning_count": 0,
+  "checks": [
+    { "code": "check_…", "level": "ok", "message": "Config loaded from …" }
+  ],
+  "summary": {
+    "mh_version": "0.1.0",
+    "config_path": "/home/user/.config/mh/config.toml",
+    "database_path": "/home/user/.local/share/mh/history.db",
+    "schema_version": 11,
+    "command_count": 42,
+    "daemon_running": true,
+    "private_mode": false,
+    "strict": false
+  }
+}
 ```
 
 ## Output Formats
@@ -2007,6 +2055,9 @@ Runtime:
 
 - `MH_CONFIG`: override config file path.
 - `MH_DB`: override database file path.
+- `MH_CONFIG_NO_CACHE`: bypass in-process config/engine cache (tests and debugging).
+- `MH_NO_DAEMON`: force shell hooks to write directly to SQLite instead of the record daemon.
+- `MH_SKIP_GIT_DETECT`: skip Git metadata subprocess during record (set by default in shell hooks).
 - `MH_PRIVATE`: default private mode environment variable.
 - `MH_POLICY_VERBOSE`: print policy denial messages from shell hooks to stderr.
 - `MH_RECORD_VERBOSE`: print record diagnostics from shell hooks to stderr.
@@ -2110,22 +2161,38 @@ Run the full command verification suite before release:
 
 ```bash
 ./scripts/verify-all-commands.sh
-cargo test                    # 196+ tests (unit, integration, security, migration)
-cargo clippy -- -D warnings
+cargo test                    # 250+ tests (unit, integration, security, shell, migration, doctor)
+cargo clippy --all-targets -- -D warnings
+cargo fmt --all -- --check
 ```
 
-Performance thresholds (CI):
+### Continuous integration
+
+GitHub Actions workflows under `.github/workflows/`:
+
+| Workflow | Trigger | Purpose |
+|----------|---------|---------|
+| `ci.yml` | push/PR to `main`/`master` | fmt, check, clippy, full test suite (incl. `sync` feature), record benchmarks (≤20 ms/op), search bench at 10k + 100k with `MH_BENCH_ASSERT`, `mh doctor --json` validation, `cargo audit`, release builds |
+| `bench-load.yml` | weekly + manual | Search/load benchmark at 100k–1M rows (`MH_BENCH_SEARCH_SIZE`) |
+| `release.yml` | tags | Release artifacts |
+
+Performance thresholds enforced in CI:
 
 ```bash
 cargo bench --bench record_bench              # direct insert; must stay under 20 ms/op
 cargo bench --bench record_pipeline_bench     # full record path; must stay under 20 ms/op
-MH_BENCH_SEARCH_SIZE=100000 cargo bench --bench search_bench   # optional load test
+MH_BENCH_ASSERT=1 cargo bench --bench search_bench   # default 10k rows
+
+# Optional local load test (100k–1M rows)
+MH_BENCH_SEARCH_SIZE=100000 MH_BENCH_ASSERT=1 \
+  MH_BENCH_MAX_FTS_MS=100 MH_BENCH_MAX_LAST_MS=50 MH_BENCH_MAX_FUZZY_MS=250 \
+  cargo bench --bench search_bench
 ```
 
 Before submitting changes:
 
 ```bash
-cargo fmt
+cargo fmt --all
 cargo test
 cargo clippy --all-targets -- -D warnings
 cargo build --release
@@ -2144,6 +2211,7 @@ target/release/mh stats --heatmap
 target/release/mh export --json "$tmpdir/history.json"
 target/release/mh import "$tmpdir/history.json" --dry-run
 target/release/mh doctor
+target/release/mh doctor --json | jq -e '.status'
 ```
 
 ## Language Rule

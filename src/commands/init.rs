@@ -9,14 +9,15 @@ use crate::config::ensure_directory;
 use crate::shell::{self, hooks, resolve_config_path};
 
 pub fn run(args: InitArgs) -> Result<()> {
+    let shell = shell::resolve_init_shell(args.shell).map_err(anyhow::Error::msg)?;
     if args.repair {
-        return repair(args.shell);
+        return repair(shell);
     }
     if args.install {
-        return install(args.shell);
+        return install(shell);
     }
 
-    print!("{}", shell::integration(args.shell));
+    print!("{}", shell::integration(shell));
     Ok(())
 }
 
@@ -162,6 +163,8 @@ const MANUAL_HOOK_MARKERS: &[&str] = &[
     "fish_preexec",
     "fish_postexec",
     "mh_history_picker",
+    "__mh_before_prompt",
+    "__mh_pwsh_loaded",
 ];
 
 fn managed_block(shell: ShellKind) -> String {
@@ -188,16 +191,34 @@ fn managed_block(shell: ShellKind) -> String {
             hooks::BEGIN_MARKER,
             hooks::END_MARKER
         ),
+        ShellKind::Sh => {
+            if shell::detect::sh_emits_bash_integration() {
+                format!(
+                    "{}\nif command -v mh >/dev/null 2>&1; then\n  eval \"$(mh init bash)\"\nfi\n{}\n",
+                    hooks::BEGIN_MARKER,
+                    hooks::END_MARKER
+                )
+            } else {
+                format!(
+                    "{}\n{}\n{}\n",
+                    hooks::BEGIN_MARKER,
+                    shell::sh::INTEGRATION,
+                    hooks::END_MARKER
+                )
+            }
+        }
+        ShellKind::Pwsh => format!(
+            "{}\n{}\n{}\n",
+            hooks::BEGIN_MARKER,
+            shell::pwsh::INTEGRATION,
+            hooks::END_MARKER
+        ),
+        ShellKind::Auto => unreachable!("resolved before managed_block"),
     }
 }
 
 fn shell_cli_name(shell: ShellKind) -> &'static str {
-    match shell {
-        ShellKind::Bash => "bash",
-        ShellKind::Zsh => "zsh",
-        ShellKind::Fish => "fish",
-        ShellKind::Nushell => "nushell",
-    }
+    shell::cli_name(shell)
 }
 
 pub fn shell_config_path(shell: ShellKind) -> Result<PathBuf> {

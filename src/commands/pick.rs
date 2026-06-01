@@ -13,13 +13,14 @@ use crate::cli::PickArgs;
 use crate::config::AppConfig;
 use crate::db::Database;
 use crate::models::{CommandRow, SearchFilters};
+use crate::ranking::{RankContext, rank_indices, sort_by_context};
 
 pub fn run(args: PickArgs) -> Result<()> {
     let config = AppConfig::load()?;
     let database = Database::open(&config)?;
-    let rows = database.search_commands(&SearchFilters {
+    let mut rows = database.search_commands(&SearchFilters {
         query: args.query.clone(),
-        cwd: args.cwd,
+        cwd: args.cwd.clone(),
         failed: args.failed,
         success: false,
         user: None,
@@ -49,8 +50,19 @@ pub fn run(args: PickArgs) -> Result<()> {
         return Ok(());
     }
 
+    if config.display.context_ranking {
+        let ctx = RankContext::from_env();
+        if args.query.as_deref().unwrap_or("").trim().is_empty() {
+            sort_by_context(&mut rows, &ctx);
+        }
+    }
+
     let selection = if io::stdin().is_terminal() && io::stderr().is_terminal() {
-        run_interactive_picker(&rows, args.query.unwrap_or_default())?
+        run_interactive_picker(
+            &rows,
+            args.query.unwrap_or_default(),
+            config.display.context_ranking,
+        )?
     } else {
         rows.first().map(|row| row.command.clone())
     };
@@ -62,12 +74,21 @@ pub fn run(args: PickArgs) -> Result<()> {
     Ok(())
 }
 
-fn run_interactive_picker(rows: &[CommandRow], initial_filter: String) -> Result<Option<String>> {
+fn run_interactive_picker(
+    rows: &[CommandRow],
+    initial_filter: String,
+    context_ranking: bool,
+) -> Result<Option<String>> {
     let mut terminal = PickerTerminal::enter()?;
     let mut state = PickerState::new(initial_filter);
+    let rank_ctx = if context_ranking {
+        Some(RankContext::from_env())
+    } else {
+        None
+    };
 
     loop {
-        let visible_indices = filter_rows(rows, &state.filter);
+        let visible_indices = filter_rows(rows, &state.filter, rank_ctx.as_ref());
         state.clamp(visible_indices.len());
         draw(&mut terminal.stderr, rows, &visible_indices, &mut state)?;
 
@@ -303,14 +324,23 @@ fn format_time(value: &str) -> String {
         .replace('Z', "")
 }
 
-fn filter_rows(rows: &[CommandRow], filter: &str) -> Vec<usize> {
+fn filter_rows(rows: &[CommandRow], filter: &str, rank_ctx: Option<&RankContext>) -> Vec<usize> {
     let filter = filter.trim().to_lowercase();
     if filter.is_empty() {
+        if let Some(ctx) = rank_ctx {
+            let mut indices: Vec<usize> = (0..rows.len()).collect();
+            indices.sort_by(|left, right| {
+                crate::ranking::context_score(&rows[*right], ctx)
+                    .cmp(&crate::ranking::context_score(&rows[*left], ctx))
+                    .then_with(|| rows[*right].started_at.cmp(&rows[*left].started_at))
+            });
+            return indices;
+        }
         return (0..rows.len()).collect();
     }
 
     let matcher = SkimMatcherV2::default();
-    let mut scored = rows
+    let fuzzy_scored = rows
         .iter()
         .enumerate()
         .filter_map(|(index, row)| {
@@ -320,6 +350,12 @@ fn filter_rows(rows: &[CommandRow], filter: &str) -> Vec<usize> {
                 .map(|score| (score, index))
         })
         .collect::<Vec<_>>();
+
+    if let Some(ctx) = rank_ctx {
+        return rank_indices(rows, ctx, &fuzzy_scored);
+    }
+
+    let mut scored = fuzzy_scored;
     scored.sort_by(|left, right| right.0.cmp(&left.0).then_with(|| left.1.cmp(&right.1)));
     scored.into_iter().map(|(_, index)| index).collect()
 }
@@ -366,10 +402,10 @@ mod tests {
             command_row("git status", Some("/home/app"), Some("git"), vec!["code"]),
         ];
 
-        assert_eq!(filter_rows(&rows, "docker"), vec![0]);
-        assert_eq!(filter_rows(&rows, "srv"), vec![0]);
-        assert_eq!(filter_rows(&rows, "code"), vec![1]);
-        assert_eq!(filter_rows(&rows, "missing"), Vec::<usize>::new());
+        assert_eq!(filter_rows(&rows, "docker", None), vec![0]);
+        assert_eq!(filter_rows(&rows, "srv", None), vec![0]);
+        assert_eq!(filter_rows(&rows, "code", None), vec![1]);
+        assert_eq!(filter_rows(&rows, "missing", None), Vec::<usize>::new());
     }
 
     #[test]

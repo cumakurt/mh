@@ -1,7 +1,7 @@
 use anyhow::{Result, bail};
 
 use crate::config::AppConfig;
-use crate::policy::{PolicyAction, PolicyEngine};
+use crate::policy_check::{PolicyCheckOutcome, PolicyCheckRequest, evaluate_request};
 
 /// Block execution paths that must honor the same deny rules as recording.
 pub fn ensure_execution_allowed(
@@ -10,19 +10,21 @@ pub fn ensure_execution_allowed(
     hostname: Option<&str>,
     environment_tier: Option<&str>,
 ) -> Result<()> {
-    let engine = PolicyEngine::from_config(config)?;
-    let decision = engine.evaluate(command, hostname, environment_tier);
-    match decision.action {
-        PolicyAction::Deny => {
-            bail!("policy denied execution: {}", decision.message);
-        }
-        PolicyAction::RequireApproval => {
+    let request = PolicyCheckRequest {
+        command,
+        cwd: None,
+        hostname,
+        environment: environment_tier,
+        quiet: false,
+    };
+    match evaluate_request(config, &request) {
+        PolicyCheckOutcome::Allow | PolicyCheckOutcome::Warn => Ok(()),
+        PolicyCheckOutcome::Deny => bail!("policy denied execution"),
+        PolicyCheckOutcome::RequireApproval => {
             bail!(
-                "policy requires approval before execution (rule {}); use an interactive command with --reason",
-                decision.rule_id
+                "policy requires approval before execution; export MH_POLICY_APPROVE=1 or run mh break-glass on"
             );
         }
-        PolicyAction::Warn | PolicyAction::Allow => Ok(()),
     }
 }
 

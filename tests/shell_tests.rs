@@ -1,10 +1,76 @@
 use mh::cli::ShellKind;
 use mh::shell;
+use mh::shell::detect::{self, ShellExecutable};
+use std::path::Path;
 
 #[test]
 fn bash_integration_sets_git_detect_skip_default() {
     let integration = shell::integration(ShellKind::Bash);
     assert!(integration.contains("MH_SKIP_GIT_DETECT:=1"));
+}
+
+#[test]
+fn bash_integration_enforces_policy_before_accept() {
+    let integration = shell::integration(ShellKind::Bash);
+    assert!(integration.contains("mh policy check"));
+    assert!(integration.contains("__mh_dispatch_accept"));
+}
+
+#[test]
+fn zsh_integration_enforces_policy_on_accept_line() {
+    let integration = shell::integration(ShellKind::Zsh);
+    assert!(integration.contains("_mh_accept_line"));
+    assert!(integration.contains("mh policy check"));
+}
+
+#[test]
+fn classifies_linux_shell_paths() {
+    assert!(matches!(
+        detect::executable_kind(Path::new("/usr/bin/bash")),
+        ShellExecutable::Supported(ShellKind::Bash)
+    ));
+    assert!(matches!(
+        detect::executable_kind(Path::new("/bin/rbash")),
+        ShellExecutable::BashCompatible
+    ));
+    assert_eq!(
+        detect::kind_from_path("/usr/bin/dash"),
+        Some(ShellKind::Sh)
+    );
+    assert_eq!(
+        detect::kind_from_path("/bin/zsh"),
+        Some(ShellKind::Zsh)
+    );
+    assert_eq!(
+        detect::executable_kind(Path::new("/usr/bin/tmux")),
+        ShellExecutable::Multiplexer
+    );
+    assert_eq!(
+        detect::kind_from_path("/opt/microsoft/powershell/7/pwsh"),
+        Some(ShellKind::Pwsh)
+    );
+}
+
+#[test]
+fn sh_integration_uses_fc_history_hook() {
+    let integration = shell::integration(ShellKind::Sh);
+    assert!(integration.contains("__mh_before_prompt"));
+    assert!(integration.contains("fc -ln"));
+}
+
+#[test]
+fn pwsh_integration_uses_psreadline_handler() {
+    let integration = shell::integration(ShellKind::Pwsh);
+    assert!(integration.contains("AddToHistoryHandler"));
+    assert!(integration.contains("__mh_record_command"));
+}
+
+#[test]
+fn auto_resolves_from_shell_env() {
+    let resolved = shell::resolve_init_shell(ShellKind::Auto);
+    if std::env::var("SHELL").is_ok() {
+        assert!(resolved.is_ok());
+    }
 }
 
 #[test]

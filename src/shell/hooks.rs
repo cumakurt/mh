@@ -135,6 +135,17 @@ fn duplicate_patterns(shell: ShellKind) -> &'static [&'static str] {
             "^mh record",
             "mh init nushell",
         ],
+        ShellKind::Sh | ShellKind::Auto => &[
+            "__mh_before_prompt",
+            "MH_PENDING_CMD",
+            "mh init sh",
+            "eval \"$(mh init sh)\"",
+        ],
+        ShellKind::Pwsh => &[
+            "__mh_pwsh_loaded",
+            "AddToHistoryHandler",
+            "mh init pwsh",
+        ],
     }
 }
 

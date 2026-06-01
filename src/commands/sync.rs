@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use rand::RngCore;
 
 use crate::cli::{SyncArgs, SyncCommand};
 use crate::config::{AppConfig, config_path};
@@ -7,6 +8,7 @@ use crate::db::Database;
 pub fn run(args: SyncArgs) -> Result<()> {
     match args.command {
         SyncCommand::Status => status(),
+        SyncCommand::Init { server, enable } => init(server, enable),
         SyncCommand::Setup { url, token } => setup(url, token),
         SyncCommand::Push => push(),
         SyncCommand::Pull => pull(),
@@ -43,11 +45,62 @@ fn status() -> Result<()> {
         "Last synced at: {}",
         empty_placeholder(&config.sync.last_synced_at)
     );
+    println!(
+        "Encrypt payloads: {}",
+        if config.sync.encrypt_payload {
+            "yes (AES-256-GCM)"
+        } else {
+            "no"
+        }
+    );
     #[cfg(feature = "sync")]
     println!("Remote sync client: enabled");
     #[cfg(not(feature = "sync"))]
     println!("Remote sync client: disabled (rebuild with --features sync)");
     println!("Config path: {}", config_path().display());
+    Ok(())
+}
+
+fn init(server: String, enable: bool) -> Result<()> {
+    if server.trim().is_empty() {
+        bail!("sync server URL must not be empty");
+    }
+
+    let mut token_bytes = [0_u8; 32];
+    rand::thread_rng().fill_bytes(&mut token_bytes);
+    let token = token_bytes
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+
+    let path = config_path();
+    let mut config = AppConfig::load()?;
+    config.sync.server_url = server.trim().to_string();
+    config.sync.token = token.clone();
+    config.sync.encrypt_payload = true;
+    config.sync.enabled = enable;
+    if config.sync.device_id.trim().is_empty() {
+        config.sync.device_id = uuid::Uuid::new_v4().to_string();
+    }
+    config.write_to_path(&path)?;
+
+    println!("Sync initialized (E2E encrypted payloads enabled)");
+    println!("Server URL: {}", config.sync.server_url);
+    println!("Device ID: {}", config.sync.device_id);
+    println!();
+    println!("Copy this token to your other machines (shown once):");
+    println!("{token}");
+    println!();
+    println!("On another host:");
+    println!(
+        "  mh sync setup \"{}\" \"{token}\"",
+        config.sync.server_url
+    );
+    if enable {
+        println!("  mh sync pull   # or push");
+    } else {
+        println!("  mh sync enable && mh sync pull");
+    }
     Ok(())
 }
 
@@ -63,6 +116,7 @@ fn setup(url: String, token: String) -> Result<()> {
     let mut config = AppConfig::load()?;
     config.sync.server_url = url.trim().to_string();
     config.sync.token = token;
+    config.sync.encrypt_payload = true;
     config.write_to_path(&path)?;
     println!("Sync configuration saved");
     println!("Run 'mh sync enable' to enable automatic sync state");

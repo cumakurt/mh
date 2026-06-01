@@ -15,7 +15,8 @@ use crate::daemon::record_pid_path;
 use crate::db::{Database, EXPECTED_SCHEMA_VERSION};
 use crate::output::styling::{StatusLevel, Styler};
 use crate::security;
-use crate::shell::{config_candidates, hooks, resolve_config_path};
+use crate::shell::detect::{self, ShellExecutable};
+use crate::shell::{cli_name, config_candidates, hooks, kind_from_env, resolve_config_path};
 
 const BEGIN_MARKER: &str = hooks::BEGIN_MARKER;
 
@@ -767,11 +768,42 @@ fn check_shell_integration(styler: &Styler) {
         return;
     };
 
-    let Some(shell) = detect_shell_kind() else {
+    let shell_path = env::var("SHELL").ok();
+    if let Some(ref path) = shell_path {
+        match detect::executable_kind(Path::new(path)) {
+            ShellExecutable::Multiplexer => {
+                say(
+                    styler,
+                    StatusLevel::Info,
+                    format!(
+                        "$SHELL is a terminal multiplexer ({path}); install mh hooks in your login shell inside tmux/screen (bash, zsh, fish, sh, pwsh)"
+                    ),
+                );
+                return;
+            }
+            ShellExecutable::Unsupported => {
+                say(
+                    styler,
+                    StatusLevel::Warn,
+                    format!(
+                        "$SHELL ({path}) has no automatic hooks; use mh record or a supported login shell ({})",
+                        detect::SUPPORTED_HOOK_SHELLS.join("; ")
+                    ),
+                );
+                return;
+            }
+            _ => {}
+        }
+    }
+
+    let Some(shell) = kind_from_env() else {
         say(
             styler,
             StatusLevel::Warn,
-            "Could not determine shell type from $SHELL (supported: bash, zsh, fish, nushell)",
+            format!(
+                "Could not determine shell type from $SHELL (supported hooks: {})",
+                detect::SUPPORTED_HOOK_SHELLS.join(", ")
+            ),
         );
         return;
     };
@@ -822,24 +854,7 @@ fn check_shell_integration(styler: &Styler) {
 }
 
 fn shell_cli_name(shell: ShellKind) -> &'static str {
-    match shell {
-        ShellKind::Bash => "bash",
-        ShellKind::Zsh => "zsh",
-        ShellKind::Fish => "fish",
-        ShellKind::Nushell => "nushell",
-    }
-}
-
-fn detect_shell_kind() -> Option<ShellKind> {
-    let shell = std::env::var("SHELL").ok()?;
-    let name = Path::new(&shell).file_name()?.to_string_lossy();
-    match name.as_ref() {
-        "bash" => Some(ShellKind::Bash),
-        "zsh" => Some(ShellKind::Zsh),
-        "fish" => Some(ShellKind::Fish),
-        "nu" | "nushell" => Some(ShellKind::Nushell),
-        _ => None,
-    }
+    cli_name(shell)
 }
 
 fn check_daemon_socket_permissions(styler: &Styler, socket_path: &Path) {

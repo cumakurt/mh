@@ -165,6 +165,7 @@ fn parse_risk_level(value: &str) -> Result<RiskLevel> {
 pub fn default_policy_config() -> PolicyConfig {
     PolicyConfig {
         default_action: "allow".to_string(),
+        enforce_in_shell: true,
         rules: vec![
             PolicyRuleConfig {
                 id: "deny-critical-prod".to_string(),

@@ -68,6 +68,72 @@ __mh_record() {
     };
 }
 
+macro_rules! mh_policy_helpers_bash_zsh {
+    () => {
+        r#"
+__mh_policy_skip() {
+  case "$1" in
+    ''|__mh_*|_mh_*|trap\ *|PROMPT_COMMAND=*|local\ *|unset\ *|return\ *|export\ MH_*|mh\ *|command\ mh\ *|*/mh\ *) return 0 ;;
+  esac
+  return 1
+}
+
+__mh_policy_allow() {
+  __mh_policy_skip "$1" && return 0
+  command mh policy check --command "$1" --cwd "$PWD" --quiet 2>/dev/null
+}
+"#
+    };
+}
+
+macro_rules! mh_bash_accept_line {
+    () => {
+        r#"
+  __mh_dispatch_accept() {
+    local cmd="$READLINE_LINE"
+    if __mh_policy_skip "$cmd"; then
+      READLINE_LINE=""
+      READLINE_POINT=0
+      return 0
+    fi
+    if ! __mh_policy_allow "$cmd"; then
+      READLINE_LINE=""
+      READLINE_POINT=0
+      return 0
+    fi
+    trap - DEBUG
+    history -s "$cmd" 2>/dev/null || true
+    eval "$cmd"
+    READLINE_LINE=""
+    READLINE_POINT=0
+    trap '__mh_preexec' DEBUG
+  }
+  bind -x '"\r": __mh_dispatch_accept' 2>/dev/null || true
+  bind -x '"\C-m": __mh_dispatch_accept' 2>/dev/null || true
+"#
+    };
+}
+
+macro_rules! mh_zsh_accept_line {
+    () => {
+        r#"
+  _mh_accept_line() {
+    local cmd="$BUFFER"
+    if __mh_policy_skip "$cmd"; then
+      zle .accept-line
+      return
+    fi
+    if ! __mh_policy_allow "$cmd"; then
+      zle -M "mh: policy blocked"
+      return 1
+    fi
+    zle .accept-line
+  }
+  zle -N accept-line _mh_accept_line
+"#
+    };
+}
+
 macro_rules! mh_record_helper_fish {
     () => {
         r#"
@@ -86,6 +152,7 @@ pub const BASH_INTEGRATION: &str = concat!(
     "# mh shell integration for bash\n",
     bash_zsh_time_helpers!(),
     mh_record_helper_bash_zsh!(),
+    mh_policy_helpers_bash_zsh!(),
     r#"
 if [[ -z "${__MH_BASH_INTEGRATION_LOADED:-}" ]]; then
 __MH_BASH_INTEGRATION_LOADED=1
@@ -144,6 +211,9 @@ if [[ $- == *i* ]]; then
 
   bind -x '"\e[A": __mh_history_picker'
   bind -x '"\eOA": __mh_history_picker'
+"#,
+    mh_bash_accept_line!(),
+    r#"
 fi
 fi
 "#
@@ -154,6 +224,7 @@ pub const ZSH_INTEGRATION: &str = concat!(
     "zmodload zsh/datetime 2>/dev/null\n",
     bash_zsh_time_helpers!(),
     mh_record_helper_bash_zsh!(),
+    mh_policy_helpers_bash_zsh!(),
     r#"
 if [[ -z "${__MH_ZSH_INTEGRATION_LOADED:-}" ]]; then
 __MH_ZSH_INTEGRATION_LOADED=1
@@ -209,6 +280,9 @@ if [[ -o interactive ]]; then
   zle -N _mh_history_picker
   bindkey '^[[A' _mh_history_picker
   bindkey '^[OA' _mh_history_picker
+"#,
+    mh_zsh_accept_line!(),
+    r#"
 fi
 fi
 "#
@@ -229,10 +303,23 @@ if not set -q MH_SKIP_GIT_DETECT
   set -gx MH_SKIP_GIT_DETECT 1
 end
 
+function __mh_policy_allow_fish -a cmd
+  switch $cmd
+    case '' '__mh_*' '_mh_*' 'mh *' 'command mh *' '*/mh *'
+      return 0
+  end
+  command mh policy check --command "$cmd" --cwd "$PWD" --quiet 2>/dev/null
+end
+
 function mh_preexec --on-event fish_preexec
   switch $argv[1]
     case '__mh_*' '_mh_*' 'mh *' 'command mh *' '*/mh *' 'set -e MH_*' 'set -g MH_*' 'set -x MH_*' 'set -u MH_*' 'export MH_*' 'function *' 'end' 'return' 'local *' 'unset *'
       return
+  end
+  if not __mh_policy_allow_fish $argv[1]
+    echo "mh: policy blocked" >&2
+    commandline -f cancel
+    return 1
   end
   set -g MH_LAST_COMMAND $argv[1]
   set -g MH_START_TIME (__mh_now_ms)

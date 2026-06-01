@@ -104,12 +104,18 @@ pub struct InitArgs {
     pub repair: bool,
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ShellKind {
+    /// Detect integration kind from `$SHELL`.
+    Auto,
     Bash,
     Zsh,
     Fish,
     Nushell,
+    /// POSIX `sh` / `dash` (fc history hook).
+    Sh,
+    /// PowerShell 7+ (`pwsh`) via PSReadLine.
+    Pwsh,
 }
 
 #[derive(Debug, Args)]
@@ -710,6 +716,13 @@ pub struct ContextHistoryArgs {
 pub enum SyncCommand {
     /// Print sync status.
     Status,
+    /// Generate device id + sync token and save server URL (E2E encrypted payloads).
+    Init {
+        #[arg(long)]
+        server: String,
+        #[arg(long, default_value_t = true)]
+        enable: bool,
+    },
     /// Store sync setup values.
     Setup { url: String, token: String },
     /// Push local history to a remote server.
@@ -739,6 +752,11 @@ pub enum PolicyCommand {
         hostname: Option<String>,
         #[arg(long)]
         env: Option<String>,
+        #[arg(long)]
+        cwd: Option<String>,
+        /// Exit 2 on deny, 3 on require_approval (for shell hooks).
+        #[arg(long, short = 'q')]
+        quiet: bool,
         #[arg(long)]
         json: bool,
     },

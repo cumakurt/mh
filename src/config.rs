@@ -75,6 +75,9 @@ pub struct DisplayConfig {
     pub date_format: String,
     pub show_duration: bool,
     pub show_exit_code: bool,
+    /// Rank picker results by cwd, exit code, and recency (McFly-style).
+    #[serde(default = "default_true")]
+    pub context_ranking: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,6 +98,9 @@ pub struct SyncConfig {
     pub last_synced_at: String,
     #[serde(default = "default_device_id")]
     pub device_id: String,
+    /// Encrypt payloads before upload (AES-256-GCM derived from sync token).
+    #[serde(default = "default_true")]
+    pub encrypt_payload: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -108,6 +114,9 @@ pub struct VaultConfig {
 pub struct PolicyConfig {
     pub default_action: String,
     pub rules: Vec<PolicyRuleConfig>,
+    /// When true, shell hooks call `mh policy check` before running interactive commands.
+    #[serde(default = "default_true")]
+    pub enforce_in_shell: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -199,6 +208,7 @@ impl Default for DisplayConfig {
             date_format: "%Y-%m-%d %H:%M:%S".to_string(),
             show_duration: true,
             show_exit_code: true,
+            context_ranking: true,
         }
     }
 }
@@ -227,6 +237,7 @@ impl Default for SyncConfig {
             auto_sync_interval_minutes: 60,
             last_synced_at: String::new(),
             device_id: default_device_id(),
+            encrypt_payload: true,
         }
     }
 }
@@ -244,9 +255,14 @@ impl Default for VaultConfig {
     }
 }
 
+fn default_true() -> bool {
+    true
+}
+
 fn default_policy_config() -> PolicyConfig {
     PolicyConfig {
         default_action: "allow".to_string(),
+        enforce_in_shell: true,
         rules: vec![
             PolicyRuleConfig {
                 id: "deny-critical-prod".to_string(),

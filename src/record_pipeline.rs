@@ -306,11 +306,9 @@ fn hash_command(command: &str) -> String {
 }
 
 fn detect_shell() -> Option<String> {
-    env::var("SHELL").ok().and_then(|path| {
-        Path::new(&path)
-            .file_name()
-            .map(|name| name.to_string_lossy().to_string())
-    })
+    env::var("SHELL")
+        .ok()
+        .map(|path| crate::shell::detect::record_shell_name(Path::new(&path)))
 }
 
 fn parse_tags(tags: Option<&str>) -> Vec<String> {

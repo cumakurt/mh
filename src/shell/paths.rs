@@ -14,6 +14,15 @@ pub fn config_candidates(shell: ShellKind, home: &Path) -> Vec<PathBuf> {
         ShellKind::Zsh => vec![home.join(".zshrc"), home.join(".zshenv")],
         ShellKind::Fish => vec![xdg.join("fish").join("config.fish")],
         ShellKind::Nushell => vec![xdg.join("nushell").join("config.nu")],
+        ShellKind::Auto => vec![home.join(".profile")],
+        ShellKind::Sh => vec![home.join(".profile"), home.join(".shrc")],
+        ShellKind::Pwsh => vec![
+            xdg.join("powershell")
+                .join("Microsoft.PowerShell_profile.ps1"),
+            home.join(".config")
+                .join("powershell")
+                .join("Microsoft.PowerShell_profile.ps1"),
+        ],
     }
 }
 

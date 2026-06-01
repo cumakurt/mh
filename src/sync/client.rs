@@ -83,8 +83,12 @@ pub fn push(config: &AppConfig, database: &Database) -> Result<()> {
 
     let json = serde_json::to_vec(&envelope).context("failed to serialize sync payload")?;
     let compressed = encode_all(json.as_slice(), 19)?;
-    let encrypted = encrypt_payload(&config.sync.token, &compressed)?;
-    let payload = STANDARD.encode(encrypted);
+    let body = if config.sync.encrypt_payload {
+        encrypt_payload(&config.sync.token, &compressed)?
+    } else {
+        compressed
+    };
+    let payload = STANDARD.encode(body);
 
     let client = http_client()?;
     let url = sync_url(&config.sync.server_url, "push")?;
@@ -138,10 +142,14 @@ pub fn pull(config: &AppConfig, database: &Database) -> Result<()> {
         return Ok(());
     }
 
-    let encrypted = STANDARD
+    let encoded = STANDARD
         .decode(body.payload.as_bytes())
         .context("invalid sync payload encoding")?;
-    let compressed = decrypt_payload(&config.sync.token, &encrypted)?;
+    let compressed = if config.sync.encrypt_payload {
+        decrypt_payload(&config.sync.token, &encoded)?
+    } else {
+        encoded
+    };
     let json = decode_all(compressed.as_slice())?;
     let envelope: SyncEnvelope =
         serde_json::from_slice(&json).context("failed to parse sync payload")?;

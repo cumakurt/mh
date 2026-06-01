@@ -78,20 +78,29 @@ Other FHS-compliant distributions usually work when Rust, a C toolchain, and `pk
 
 ### Supported interactive shells
 
-| Shell | Integration | Config file resolution |
-|-------|-------------|-------------------------|
-| **Bash** | `DEBUG` trap + `PROMPT_COMMAND` | `~/.bashrc`, then `~/.bash_profile`, then `~/.profile` |
-| **Zsh** | `preexec` / `precmd` hooks | `~/.zshrc`, then `~/.zshenv` |
-| **Fish** | `fish_preexec` / `fish_postexec` | `$XDG_CONFIG_HOME/fish/config.fish` |
-| **Nushell** | `pre_execution` / `pre_prompt` | `$XDG_CONFIG_HOME/nushell/config.nu` |
+| Shell | Binary paths (examples) | Integration | Config file |
+|-------|-------------------------|-------------|-------------|
+| **Bash** | `/bin/bash`, `/usr/bin/bash`, **`rbash`** (restricted bash) | `DEBUG` trap + `PROMPT_COMMAND` | `~/.bashrc`, `~/.bash_profile`, `~/.profile` |
+| **Zsh** | `/bin/zsh`, `/usr/bin/zsh` | `preexec` / `precmd` hooks | `~/.zshrc`, `~/.zshenv` |
+| **POSIX sh / dash** | `/bin/sh`, `/usr/bin/sh`, `/usr/bin/dash` | `fc` history + prompt hook (`mh init sh`) | `~/.profile` |
+| **Fish** | `/usr/bin/fish` | `fish_preexec` / `fish_postexec` | `$XDG_CONFIG_HOME/fish/config.fish` |
+| **Nushell** | `/usr/bin/nu` | `pre_execution` / `pre_prompt` | `$XDG_CONFIG_HOME/nushell/config.nu` |
+| **PowerShell** | `/usr/bin/pwsh`, `/opt/microsoft/powershell/7/pwsh` | PSReadLine `AddToHistoryHandler` | `$XDG_CONFIG_HOME/powershell/Microsoft.PowerShell_profile.ps1` |
+
+**Not shells (no hook on the multiplexer itself):** `screen`, `tmux` — run `mh init <your-login-shell>` inside the pane; `$SHELL` may point at tmux/screen but hooks belong in bash/zsh/etc.
+
+When `/bin/sh` is a symlink to bash, `mh init sh` tells you to use `mh init bash` for full `DEBUG` trap support.
 
 Install integration:
 
 ```bash
+mh init auto --install    # reads $SHELL (bash, zsh, sh, pwsh, …)
 mh init bash --install
 mh init zsh --install
+mh init sh --install      # dash / posix sh
+mh init pwsh --install    # PowerShell 7+
 mh init fish --install
-# Nushell: paste `mh init nushell` into config.nu (see below)
+mh init nushell           # paste into config.nu
 ```
 
 Or use `./install.sh --shell <shell>` which picks the first existing config file from the list above.
@@ -123,7 +132,6 @@ Shell hooks record the command line as the shell presents it to `preexec` / `DEB
 
 - macOS / BSD (hooks are Linux-oriented; database code is portable but not CI-tested outside Linux)
 - Windows / WSL is best-effort only
-- PowerShell as a recording shell
 - **Fleet control plane (`mh-server`)** — remote sync uses optional `mh sync` with `--features sync` and a compatible HTTP API; a dedicated multi-tenant server is not part of this repository
 
 ## Command Gallery
@@ -252,6 +260,8 @@ mh pick --query docker --limit 100
 mh pick --fuzzy --query dps
 ```
 
+`mh pick` ranks results by current directory, successful exit codes, and recency when `display.context_ranking` is true (default). Up-arrow in integrated shells uses the same picker.
+
 #### `mh tui`
 
 ![mh tui](docs/screenshots/tui.svg)
@@ -360,7 +370,11 @@ mh audit --verify-chain
 mh policy list
 mh policy check "rm -rf /"
 mh policy check "rm -rf /" --hostname prod-web-01 --env production --json
+# Shell hooks use --quiet (exit 2 = deny, 3 = require_approval):
+mh policy check "rm -rf /" --cwd "$PWD" --quiet
 ```
+
+With `policy.enforce_in_shell = true` (default), **bash** and **zsh** block denied commands at Enter; **fish** cancels the line in `preexec`. One-off approval: `MH_POLICY_APPROVE=1 your-command`. Disable enforcement: `mh config set policy.enforce_in_shell false`.
 
 #### `mh timeline`
 
@@ -486,12 +500,14 @@ Policy rules with `require_approval` need `--reason` or `--yes` before execution
 
 ```bash
 mh sync status
-mh sync setup https://mh.example.test token-value
+mh sync init --server https://mh.example.test    # generates E2E token + device id
+mh sync setup https://mh.example.test token-value # other machines
 mh sync enable
+mh sync push   # or pull
 mh sync disable
 ```
 
-Remote push/pull requires building with `--features sync`.
+Remote push/pull requires building with `--features sync`. Payloads are **AES-256-GCM** encrypted by default (`sync.encrypt_payload`, on by default).
 
 ### Shell Tooling
 

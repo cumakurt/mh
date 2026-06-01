@@ -39,7 +39,7 @@ Options:
   --no-enable          Skip shell integration setup.
   --no-completions     Skip shell completion installation.
   --no-man             Skip man page installation.
-  --shell SHELL        Override detected shell: bash, zsh, fish, or nushell.
+  --shell SHELL        Override detected shell: auto, bash, zsh, sh, pwsh, fish, or nushell.
   --install-dir DIR    Install the mh binary into DIR.
   --user               Install into ~/.local/bin.
   --system             Install into /usr/local/bin.
@@ -383,17 +383,27 @@ detect_shell() {
   fi
 
   case "${shell_name}" in
-    bash)
+    bash|rbash)
       DETECTED_SHELL="bash"
       ;;
     zsh)
       DETECTED_SHELL="zsh"
+      ;;
+    sh|dash|ash)
+      DETECTED_SHELL="sh"
+      ;;
+    pwsh)
+      DETECTED_SHELL="pwsh"
       ;;
     fish)
       DETECTED_SHELL="fish"
       ;;
     nu|nushell)
       DETECTED_SHELL="nushell"
+      ;;
+    screen|tmux)
+      DETECTED_SHELL="unsupported"
+      warn "SHELL points at a multiplexer (${shell_name}); run mh init inside your login shell (bash/zsh/…)"
       ;;
     *)
       DETECTED_SHELL="unsupported"
@@ -416,6 +426,12 @@ shell_config_candidates() {
       ;;
     nushell)
       printf '%s\n' "${XDG_CONFIG_HOME:-${HOME}/.config}/nushell/config.nu"
+      ;;
+    sh)
+      printf '%s\n' "${HOME}/.profile" "${HOME}/.shrc"
+      ;;
+    pwsh)
+      printf '%s\n' "${XDG_CONFIG_HOME:-${HOME}/.config}/powershell/Microsoft.PowerShell_profile.ps1"
       ;;
     *)
       return 1
@@ -526,7 +542,7 @@ enable_shell_integration() {
 
   detect_shell
   if [[ "${DETECTED_SHELL}" == "unsupported" ]]; then
-    warn "unsupported shell; run '${APP_NAME} init <shell>' manually for bash, zsh, fish, or nushell"
+    warn "unsupported shell; run '${APP_NAME} init <shell>' manually (bash, zsh, sh, pwsh, fish, nushell)"
     return 0
   fi
 

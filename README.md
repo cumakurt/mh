@@ -245,6 +245,7 @@ A reference unit file is also in `contrib/systemd/user/mh-record-daemon.service`
 ```bash
 mh last
 mh last 20
+mh last 1 --offset 3 --plain
 mh last --failed
 mh last --json
 mh last --plain
@@ -744,6 +745,8 @@ mh last --session
 ### Up Arrow Picker
 
 For Bash, Zsh, Fish, and Nushell, the integration binds the up arrow key to `mh pick`. Pressing up opens a selectable command list instead of only stepping through raw shell history.
+
+For Bash, Zsh, and Fish, the right arrow steps through recent commands directly on the prompt without opening the picker. Press right repeatedly to move to older commands, and press left to move back toward the original prompt line.
 
 Inside the picker:
 

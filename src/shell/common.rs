@@ -198,8 +198,86 @@ case ";$PROMPT_COMMAND;" in
 esac
 
 if [[ $- == *i* ]]; then
+  __mh_history_index=-1
+  __mh_history_saved_line=""
+  __mh_history_current_line=""
+
+  __mh_history_reset() {
+    __mh_history_index=-1
+    __mh_history_saved_line=""
+    __mh_history_current_line=""
+  }
+
+  __mh_history_load() {
+    local selected
+    selected="$(command mh last 1 --plain --offset "$__mh_history_index" 2>/dev/null)"
+    if [[ -n "$selected" ]]; then
+      READLINE_LINE="$selected"
+      READLINE_POINT="${#READLINE_LINE}"
+      __mh_history_current_line="$selected"
+      return 0
+    fi
+    return 1
+  }
+
+  __mh_history_step() {
+    local direction="$1"
+    if [[ "${__mh_history_index:--1}" -ge 0 && "$READLINE_LINE" != "$__mh_history_current_line" ]]; then
+      __mh_history_reset
+    fi
+
+    if [[ "$direction" == "older" ]]; then
+      if [[ "${__mh_history_index:--1}" -lt 0 && "${READLINE_POINT:-0}" -lt "${#READLINE_LINE}" ]]; then
+        READLINE_POINT=$((READLINE_POINT + 1))
+        return 0
+      fi
+      if [[ "${__mh_history_index:--1}" -lt 0 ]]; then
+        __mh_history_saved_line="$READLINE_LINE"
+        __mh_history_index=0
+      else
+        __mh_history_index=$((__mh_history_index + 1))
+      fi
+      if ! __mh_history_load; then
+        if [[ "$__mh_history_index" -eq 0 ]]; then
+          __mh_history_reset
+        else
+          __mh_history_index=$((__mh_history_index - 1))
+        fi
+      fi
+      return 0
+    fi
+
+    if [[ "${__mh_history_index:--1}" -lt 0 ]]; then
+      if [[ "${READLINE_POINT:-0}" -gt 0 ]]; then
+        READLINE_POINT=$((READLINE_POINT - 1))
+      fi
+      return 0
+    fi
+    if [[ "$__mh_history_index" -eq 0 ]]; then
+      READLINE_LINE="$__mh_history_saved_line"
+      READLINE_POINT="${#READLINE_LINE}"
+      __mh_history_reset
+    else
+      __mh_history_index=$((__mh_history_index - 1))
+      __mh_history_load || true
+    fi
+  }
+
+  __mh_history_older() {
+    trap - DEBUG
+    __mh_history_step older
+    trap '__mh_preexec' DEBUG
+  }
+
+  __mh_history_newer() {
+    trap - DEBUG
+    __mh_history_step newer
+    trap '__mh_preexec' DEBUG
+  }
+
   __mh_history_picker() {
     trap - DEBUG
+    __mh_history_reset
     local selected
     selected="$(command mh pick --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
     if [[ -n "$selected" ]]; then
@@ -211,6 +289,10 @@ if [[ $- == *i* ]]; then
 
   bind -x '"\e[A": __mh_history_picker'
   bind -x '"\eOA": __mh_history_picker'
+  bind -x '"\e[C": __mh_history_older'
+  bind -x '"\eOC": __mh_history_older'
+  bind -x '"\e[D": __mh_history_newer'
+  bind -x '"\eOD": __mh_history_newer'
 "#,
     mh_bash_accept_line!(),
     r#"
@@ -267,7 +349,75 @@ add-zsh-hook preexec _mh_preexec
 add-zsh-hook precmd _mh_precmd
 
 if [[ -o interactive ]]; then
+  typeset -g _mh_history_index=-1
+  typeset -g _mh_history_saved_buffer=""
+  typeset -g _mh_history_current_buffer=""
+
+  _mh_history_reset() {
+    _mh_history_index=-1
+    _mh_history_saved_buffer=""
+    _mh_history_current_buffer=""
+  }
+
+  _mh_history_load() {
+    local selected
+    selected="$(command mh last 1 --plain --offset "$_mh_history_index" 2>/dev/null)"
+    if [[ -n "$selected" ]]; then
+      BUFFER="$selected"
+      CURSOR=${#BUFFER}
+      _mh_history_current_buffer="$selected"
+      zle redisplay
+      return 0
+    fi
+    return 1
+  }
+
+  _mh_history_older() {
+    if (( _mh_history_index >= 0 )) && [[ "$BUFFER" != "$_mh_history_current_buffer" ]]; then
+      _mh_history_reset
+    fi
+    if (( _mh_history_index < 0 && CURSOR < ${#BUFFER} )); then
+      zle .forward-char
+      return
+    fi
+    if (( _mh_history_index < 0 )); then
+      _mh_history_saved_buffer="$BUFFER"
+      _mh_history_index=0
+    else
+      _mh_history_index=$((_mh_history_index + 1))
+    fi
+    if ! _mh_history_load; then
+      if (( _mh_history_index == 0 )); then
+        _mh_history_reset
+      else
+        _mh_history_index=$((_mh_history_index - 1))
+      fi
+    fi
+  }
+
+  _mh_history_newer() {
+    if (( _mh_history_index >= 0 )) && [[ "$BUFFER" != "$_mh_history_current_buffer" ]]; then
+      _mh_history_reset
+    fi
+    if (( _mh_history_index < 0 )); then
+      if (( CURSOR > 0 )); then
+        zle .backward-char
+      fi
+      return
+    fi
+    if (( _mh_history_index == 0 )); then
+      BUFFER="$_mh_history_saved_buffer"
+      CURSOR=${#BUFFER}
+      _mh_history_reset
+      zle redisplay
+    else
+      _mh_history_index=$((_mh_history_index - 1))
+      _mh_history_load || true
+    fi
+  }
+
   _mh_history_picker() {
+    _mh_history_reset
     local selected
     selected="$(command mh pick --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
     if [[ -n "$selected" ]]; then
@@ -277,9 +427,15 @@ if [[ -o interactive ]]; then
     fi
   }
 
+  zle -N _mh_history_older
+  zle -N _mh_history_newer
   zle -N _mh_history_picker
   bindkey '^[[A' _mh_history_picker
   bindkey '^[OA' _mh_history_picker
+  bindkey '^[[C' _mh_history_older
+  bindkey '^[OC' _mh_history_older
+  bindkey '^[[D' _mh_history_newer
+  bindkey '^[OD' _mh_history_newer
 "#,
     mh_zsh_accept_line!(),
     r#"
@@ -346,6 +502,7 @@ function mh_postexec --on-event fish_postexec
 end
 
 function mh_history_picker
+  mh_history_reset
   set -l mh_pick_limit 100
   if set -q MH_PICK_LIMIT
     set mh_pick_limit $MH_PICK_LIMIT
@@ -358,8 +515,85 @@ function mh_history_picker
   end
 end
 
+set -g __mh_history_index -1
+set -g __mh_history_saved_line ""
+set -g __mh_history_current_line ""
+
+function mh_history_reset
+  set -g __mh_history_index -1
+  set -g __mh_history_saved_line ""
+  set -g __mh_history_current_line ""
+end
+
+function mh_history_load
+  set -l selected (command mh last 1 --plain --offset $__mh_history_index 2>/dev/null)
+  if test -n "$selected"
+    commandline --replace "$selected"
+    commandline --cursor (string length -- "$selected")
+    set -g __mh_history_current_line "$selected"
+    return 0
+  end
+  return 1
+end
+
+function mh_history_older
+  set -l current (commandline)
+  if test $__mh_history_index -ge 0; and test "$current" != "$__mh_history_current_line"
+    mh_history_reset
+  end
+
+  set -l cursor (commandline --cursor)
+  if test $__mh_history_index -lt 0; and test $cursor -lt (string length -- "$current")
+    commandline --function forward-char
+    return
+  end
+
+  if test $__mh_history_index -lt 0
+    set -g __mh_history_saved_line "$current"
+    set -g __mh_history_index 0
+  else
+    set -g __mh_history_index (math "$__mh_history_index + 1")
+  end
+
+  if not mh_history_load
+    if test $__mh_history_index -eq 0
+      mh_history_reset
+    else
+      set -g __mh_history_index (math "$__mh_history_index - 1")
+    end
+  end
+end
+
+function mh_history_newer
+  set -l current (commandline)
+  if test $__mh_history_index -ge 0; and test "$current" != "$__mh_history_current_line"
+    mh_history_reset
+  end
+
+  if test $__mh_history_index -lt 0
+    set -l cursor (commandline --cursor)
+    if test $cursor -gt 0
+      commandline --function backward-char
+    end
+    return
+  end
+
+  if test $__mh_history_index -eq 0
+    commandline --replace "$__mh_history_saved_line"
+    commandline --cursor (string length -- "$__mh_history_saved_line")
+    mh_history_reset
+  else
+    set -g __mh_history_index (math "$__mh_history_index - 1")
+    mh_history_load
+  end
+end
+
 bind \e\[A mh_history_picker
 bind \eOA mh_history_picker
+bind \e\[C mh_history_older
+bind \eOC mh_history_older
+bind \e\[D mh_history_newer
+bind \eOD mh_history_newer
 end
 "#
 );

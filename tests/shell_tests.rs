@@ -106,6 +106,15 @@ fn zsh_integration_binds_up_arrow_to_picker() {
 }
 
 #[test]
+fn zsh_integration_binds_horizontal_arrows_to_plain_history_steps() {
+    let integration = shell::integration(ShellKind::Zsh);
+
+    assert!(integration.contains("mh last 1 --plain --offset"));
+    assert!(integration.contains("bindkey '^[[C' _mh_history_older"));
+    assert!(integration.contains("bindkey '^[[D' _mh_history_newer"));
+}
+
+#[test]
 fn bash_integration_binds_up_arrow_to_picker() {
     let integration = shell::integration(ShellKind::Bash);
 
@@ -115,12 +124,30 @@ fn bash_integration_binds_up_arrow_to_picker() {
 }
 
 #[test]
+fn bash_integration_binds_horizontal_arrows_to_plain_history_steps() {
+    let integration = shell::integration(ShellKind::Bash);
+
+    assert!(integration.contains("mh last 1 --plain --offset"));
+    assert!(integration.contains("bind -x '\"\\e[C\": __mh_history_older'"));
+    assert!(integration.contains("bind -x '\"\\e[D\": __mh_history_newer'"));
+}
+
+#[test]
 fn fish_integration_binds_up_arrow_to_picker() {
     let integration = shell::integration(ShellKind::Fish);
 
     assert!(integration.contains("mh pick"));
     assert!(integration.contains("bind \\e\\[A mh_history_picker"));
     assert!(integration.contains("commandline --replace \"$selected\""));
+}
+
+#[test]
+fn fish_integration_binds_horizontal_arrows_to_plain_history_steps() {
+    let integration = shell::integration(ShellKind::Fish);
+
+    assert!(integration.contains("mh last 1 --plain --offset"));
+    assert!(integration.contains("bind \\e\\[C mh_history_older"));
+    assert!(integration.contains("bind \\e\\[D mh_history_newer"));
 }
 
 #[test]

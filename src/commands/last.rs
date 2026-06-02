@@ -20,6 +20,7 @@ pub fn run(args: LastArgs) -> Result<()> {
 
     let config = AppConfig::load()?;
     let database = Database::open(&config)?;
+    let limit = args.limit.unwrap_or(config.display.default_limit);
     let filters = SearchFilters {
         query: None,
         cwd: args.cwd,
@@ -40,7 +41,7 @@ pub fn run(args: LastArgs) -> Result<()> {
         hostname: None,
         ssh: false,
         root: false,
-        limit: args.limit.unwrap_or(config.display.default_limit),
+        limit: limit.saturating_add(args.offset),
         session_id: if args.session {
             env::var("MH_SESSION_ID").ok()
         } else {
@@ -51,6 +52,11 @@ pub fn run(args: LastArgs) -> Result<()> {
         git_commit: args.git_commit,
         environment: args.env,
     };
-    let rows = database.search_commands(&filters)?;
+    let rows = database
+        .search_commands(&filters)?
+        .into_iter()
+        .skip(args.offset)
+        .take(limit)
+        .collect::<Vec<_>>();
     output::print_rows_with_formats(&rows, args.json, args.plain, false, args.markdown)
 }

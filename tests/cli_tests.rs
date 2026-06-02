@@ -204,3 +204,16 @@ fn parses_export_sqlite_flag() {
         panic!("expected export command");
     }
 }
+
+#[test]
+fn parses_last_offset() {
+    let cli = Cli::try_parse_from(["mh", "last", "1", "--offset", "3"])
+        .expect("last offset should parse");
+
+    if let mh::cli::Command::Last(args) = cli.command {
+        assert_eq!(args.limit, Some(1));
+        assert_eq!(args.offset, 3);
+    } else {
+        panic!("expected last command");
+    }
+}

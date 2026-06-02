@@ -267,6 +267,9 @@ pub struct SearchArgs {
 #[derive(Debug, Args)]
 pub struct LastArgs {
     pub limit: Option<usize>,
+    /// Skip this many newest commands before listing.
+    #[arg(long, default_value_t = 0)]
+    pub offset: usize,
     #[arg(long)]
     pub failed: bool,
     #[arg(long)]

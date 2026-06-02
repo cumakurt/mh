@@ -289,10 +289,12 @@ if [[ $- == *i* ]]; then
 
   bind -x '"\e[A": __mh_history_picker'
   bind -x '"\eOA": __mh_history_picker'
-  bind -x '"\e[C": __mh_history_older'
-  bind -x '"\eOC": __mh_history_older'
-  bind -x '"\e[D": __mh_history_newer'
-  bind -x '"\eOD": __mh_history_newer'
+  if [[ -n "${MH_HISTORY_ARROWS:-}" ]]; then
+    bind -x '"\e[C": __mh_history_older'
+    bind -x '"\eOC": __mh_history_older'
+    bind -x '"\e[D": __mh_history_newer'
+    bind -x '"\eOD": __mh_history_newer'
+  fi
 "#,
     mh_bash_accept_line!(),
     r#"
@@ -432,10 +434,12 @@ if [[ -o interactive ]]; then
   zle -N _mh_history_picker
   bindkey '^[[A' _mh_history_picker
   bindkey '^[OA' _mh_history_picker
-  bindkey '^[[C' _mh_history_older
-  bindkey '^[OC' _mh_history_older
-  bindkey '^[[D' _mh_history_newer
-  bindkey '^[OD' _mh_history_newer
+  if [[ -n "${MH_HISTORY_ARROWS:-}" ]]; then
+    bindkey '^[[C' _mh_history_older
+    bindkey '^[OC' _mh_history_older
+    bindkey '^[[D' _mh_history_newer
+    bindkey '^[OD' _mh_history_newer
+  fi
 "#,
     mh_zsh_accept_line!(),
     r#"
@@ -590,10 +594,12 @@ end
 
 bind \e\[A mh_history_picker
 bind \eOA mh_history_picker
-bind \e\[C mh_history_older
-bind \eOC mh_history_older
-bind \e\[D mh_history_newer
-bind \eOD mh_history_newer
+if set -q MH_HISTORY_ARROWS
+  bind \e\[C mh_history_older
+  bind \eOC mh_history_older
+  bind \e\[D mh_history_newer
+  bind \eOD mh_history_newer
+end
 end
 "#
 );

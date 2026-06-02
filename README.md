@@ -746,7 +746,7 @@ mh last --session
 
 For Bash, Zsh, Fish, and Nushell, the integration binds the up arrow key to `mh pick`. Pressing up opens a selectable command list instead of only stepping through raw shell history.
 
-For Bash, Zsh, and Fish, the right arrow steps through recent commands directly on the prompt without opening the picker. Press right repeatedly to move to older commands, and press left to move back toward the original prompt line.
+For Bash, Zsh, and Fish, you can optionally bind the left and right arrow keys to step through recent `mh` commands on the prompt (without opening the picker). Set `MH_HISTORY_ARROWS=1` before loading shell integration (or add it to your shell rc file). With it enabled, press right repeatedly to move to older commands and left to move back toward the original prompt line.
 
 Inside the picker:
 
@@ -2153,6 +2153,7 @@ Runtime:
 - `MH_RECORD_VERBOSE`: print record diagnostics from shell hooks to stderr.
 - `MH_SESSION_ID`: shell session identifier used by hooks.
 - `MH_PICK_LIMIT`: default result limit for up-arrow picker integration.
+- `MH_HISTORY_ARROWS`: when set (e.g. `1`), bind left/right arrow keys to step through recent `mh` commands on the prompt (Bash, Zsh, Fish).
 - `MH_VAULT_PASSPHRASE`: non-interactive vault passphrase source.
 - `SHELL`: shell used by replay, snippets, vault run, and shell detection.
 - `EDITOR`: editor used by `mh config edit`.

@@ -2315,5 +2315,3 @@ target/release/mh doctor --json | jq -e '.status'
 You are free to use, study, modify, and redistribute this program in accordance with the AGPL. Copyleft obligations apply, including when you offer the software to others over a network (SaaS/API). Derivative works must remain under the same license and include prominent notices as required by the AGPL.
 
 Copyright © 2026 Cuma Kurt. See [LICENSE](LICENSE) for the complete terms.
-
-

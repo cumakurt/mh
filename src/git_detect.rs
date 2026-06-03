@@ -86,9 +86,13 @@ pub fn detect_git_context_from_env() -> Option<GitContext> {
 
 fn git_metadata_path(cwd: &str) -> Option<PathBuf> {
     let mut path = PathBuf::from(cwd);
+    if !path.is_dir() {
+        return None;
+    }
+
     loop {
         let git_path = path.join(".git");
-        if git_path.exists() {
+        if git_path.is_dir() || read_gitdir_from_file(&git_path).is_some() {
             return Some(git_path);
         }
         if !path.pop() {
@@ -210,8 +214,8 @@ mod tests {
 
     #[test]
     fn is_git_repository_returns_false_outside_repo() {
-        let temp_dir = crate::config::private_tempdir().expect("temp dir");
-        assert!(!is_git_repository(&temp_dir.path().to_string_lossy()));
+        let path = format!("/mh-definitely-not-a-git-repo-{}", std::process::id());
+        assert!(!is_git_repository(&path));
     }
 
     #[test]

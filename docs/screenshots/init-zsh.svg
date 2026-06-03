@@ -44,7 +44,7 @@
   <text x="18" y="770" fill="#d8dee9">if [[ -o interactive ]]; then</text>
   <text x="18" y="790" fill="#d8dee9">  _mh_history_picker() {</text>
   <text x="18" y="810" fill="#d8dee9">    local selected</text>
-  <text x="18" y="830" fill="#d8dee9">    selected=&quot;$(command mh pick --limit &quot;${MH_PICK_LIMIT:-100}&quot; &lt;/dev/tty)&quot;</text>
+  <text x="18" y="830" fill="#d8dee9">    selected=&quot;$(command mh pick --recent --limit &quot;${MH_PICK_LIMIT:-100}&quot; &lt;/dev/tty)&quot;</text>
   <text x="18" y="850" fill="#d8dee9">    if [[ -n &quot;$selected&quot; ]]; then</text>
   <text x="18" y="870" fill="#d8dee9">      BUFFER=&quot;$selected&quot;</text>
   <text x="18" y="890" fill="#d8dee9">      CURSOR=${#BUFFER}</text>

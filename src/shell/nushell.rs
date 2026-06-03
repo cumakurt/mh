@@ -42,7 +42,7 @@ let mh_history_picker_keybinding = {
   mode: [emacs vi_normal vi_insert]
   event: {
     send: executehostcommand
-    cmd: $"let selected = (^mh pick --limit ($mh_pick_limit | into string)); if (($selected | str length) > 0) { commandline edit --replace $selected }"
+    cmd: $"let selected = (^mh pick --recent --limit ($mh_pick_limit | into string)); if (($selected | str length) > 0) { commandline edit --replace $selected }"
   }
 }
 

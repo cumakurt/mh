@@ -38,7 +38,7 @@ add-zsh-hook precmd _mh_precmd
 if [[ -o interactive ]]; then
   _mh_history_picker() {
     local selected
-    selected="$(command mh pick --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
+    selected="$(command mh pick --recent --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
     if [[ -n "$selected" ]]; then
       BUFFER="$selected"
       CURSOR=${#BUFFER}

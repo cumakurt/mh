@@ -101,6 +101,7 @@ fn zsh_integration_binds_up_arrow_to_picker() {
     let integration = shell::integration(ShellKind::Zsh);
 
     assert!(integration.contains("mh pick"));
+    assert!(integration.contains("mh pick --recent"));
     assert!(integration.contains("bindkey '^[[A' _mh_history_picker"));
     assert!(integration.contains("BUFFER=\"$selected\""));
 }
@@ -120,6 +121,7 @@ fn bash_integration_binds_up_arrow_to_picker() {
     let integration = shell::integration(ShellKind::Bash);
 
     assert!(integration.contains("mh pick"));
+    assert!(integration.contains("mh pick --recent"));
     assert!(integration.contains("bind -x"));
     assert!(integration.contains("READLINE_LINE=\"$selected\""));
 }
@@ -139,6 +141,7 @@ fn fish_integration_binds_up_arrow_to_picker() {
     let integration = shell::integration(ShellKind::Fish);
 
     assert!(integration.contains("mh pick"));
+    assert!(integration.contains("mh pick --recent"));
     assert!(integration.contains("bind \\e\\[A mh_history_picker"));
     assert!(integration.contains("commandline --replace \"$selected\""));
 }
@@ -162,6 +165,7 @@ fn nushell_integration_records_exit_code_and_preserves_hooks() {
     assert!(integration.contains("^mh record"));
     assert!(integration.contains("mh_existing_hooks"));
     assert!(integration.contains("MH_PICK_LIMIT"));
+    assert!(integration.contains("mh pick --recent"));
 }
 
 #[test]

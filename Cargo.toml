@@ -25,7 +25,7 @@ hmac = "0.12"
 hostname = "0.4"
 rand = "0.8"
 regex = "1"
-ratatui = "0.29"
+ratatui = { version = "0.30", default-features = false, features = ["crossterm", "underline-color"] }
 keyring = "2"
 rpassword = "7"
 rusqlite = { version = "0.31", features = ["bundled"] }

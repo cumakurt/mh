@@ -50,7 +50,8 @@ pub fn run(args: PickArgs) -> Result<()> {
         return Ok(());
     }
 
-    if config.display.context_ranking {
+    let context_ranking = config.display.context_ranking && !args.recent;
+    if context_ranking {
         let ctx = RankContext::from_env();
         if args.query.as_deref().unwrap_or("").trim().is_empty() {
             sort_by_context(&mut rows, &ctx);
@@ -61,7 +62,9 @@ pub fn run(args: PickArgs) -> Result<()> {
         run_interactive_picker(
             &rows,
             args.query.unwrap_or_default(),
-            config.display.context_ranking,
+            context_ranking,
+            args.recent,
+            args.recent,
         )?
     } else {
         rows.first().map(|row| row.command.clone())
@@ -78,6 +81,8 @@ fn run_interactive_picker(
     rows: &[CommandRow],
     initial_filter: String,
     context_ranking: bool,
+    preserve_entry_order: bool,
+    command_only: bool,
 ) -> Result<Option<String>> {
     let mut terminal = PickerTerminal::enter()?;
     let mut state = PickerState::new(initial_filter);
@@ -88,9 +93,16 @@ fn run_interactive_picker(
     };
 
     loop {
-        let visible_indices = filter_rows(rows, &state.filter, rank_ctx.as_ref());
+        let visible_indices =
+            filter_rows(rows, &state.filter, rank_ctx.as_ref(), preserve_entry_order);
         state.clamp(visible_indices.len());
-        draw(&mut terminal.stderr, rows, &visible_indices, &mut state)?;
+        draw(
+            &mut terminal.stderr,
+            rows,
+            &visible_indices,
+            &mut state,
+            command_only,
+        )?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind != KeyEventKind::Press {
@@ -230,6 +242,7 @@ fn draw(
     rows: &[CommandRow],
     visible_indices: &[usize],
     state: &mut PickerState,
+    command_only: bool,
 ) -> Result<()> {
     let (width, height) = terminal::size()?;
     let width = width.max(20);
@@ -251,7 +264,7 @@ fn draw(
         MoveTo(0, 2),
         Print(format!("Filter: {}", state.filter)),
         MoveTo(0, 3),
-        Print(header_line(width))
+        Print(header_line(width, command_only))
     )?;
 
     if visible_indices.is_empty() {
@@ -275,7 +288,11 @@ fn draw(
         if state.offset + screen_row == state.selected {
             queue!(stderr, SetAttribute(Attribute::Reverse))?;
         }
-        queue!(stderr, Print(row_line(&rows[*index], width)), ResetColor)?;
+        queue!(
+            stderr,
+            Print(row_line(&rows[*index], width, command_only)),
+            ResetColor
+        )?;
         if state.offset + screen_row == state.selected {
             queue!(stderr, SetAttribute(Attribute::NoReverse))?;
         }
@@ -285,14 +302,22 @@ fn draw(
     Ok(())
 }
 
-fn header_line(width: u16) -> String {
+fn header_line(width: u16, command_only: bool) -> String {
+    if command_only {
+        return truncate_to_width("Command", width);
+    }
+
     truncate_to_width(
         "ID     Time                 Exit  CWD                  Command",
         width,
     )
 }
 
-fn row_line(row: &CommandRow, width: u16) -> String {
+fn row_line(row: &CommandRow, width: u16, command_only: bool) -> String {
+    if command_only {
+        return truncate_to_width(&row.command, width);
+    }
+
     if width < 60 {
         return truncate_to_width(&row.command, width);
     }
@@ -324,7 +349,12 @@ fn format_time(value: &str) -> String {
         .replace('Z', "")
 }
 
-fn filter_rows(rows: &[CommandRow], filter: &str, rank_ctx: Option<&RankContext>) -> Vec<usize> {
+fn filter_rows(
+    rows: &[CommandRow],
+    filter: &str,
+    rank_ctx: Option<&RankContext>,
+    preserve_entry_order: bool,
+) -> Vec<usize> {
     let filter = filter.trim().to_lowercase();
     if filter.is_empty() {
         if let Some(ctx) = rank_ctx {
@@ -350,6 +380,10 @@ fn filter_rows(rows: &[CommandRow], filter: &str, rank_ctx: Option<&RankContext>
                 .map(|score| (score, index))
         })
         .collect::<Vec<_>>();
+
+    if preserve_entry_order {
+        return fuzzy_scored.into_iter().map(|(_, index)| index).collect();
+    }
 
     if let Some(ctx) = rank_ctx {
         return rank_indices(rows, ctx, &fuzzy_scored);
@@ -402,10 +436,38 @@ mod tests {
             command_row("git status", Some("/home/app"), Some("git"), vec!["code"]),
         ];
 
-        assert_eq!(filter_rows(&rows, "docker", None), vec![0]);
-        assert_eq!(filter_rows(&rows, "srv", None), vec![0]);
-        assert_eq!(filter_rows(&rows, "code", None), vec![1]);
-        assert_eq!(filter_rows(&rows, "missing", None), Vec::<usize>::new());
+        assert_eq!(filter_rows(&rows, "docker", None, false), vec![0]);
+        assert_eq!(filter_rows(&rows, "srv", None, false), vec![0]);
+        assert_eq!(filter_rows(&rows, "code", None, false), vec![1]);
+        assert_eq!(
+            filter_rows(&rows, "missing", None, false),
+            Vec::<usize>::new()
+        );
+    }
+
+    #[test]
+    fn recent_mode_filter_preserves_entry_order() {
+        let rows = vec![
+            command_row(
+                "docker compose ps",
+                Some("/srv/api"),
+                Some("docker"),
+                vec![],
+            ),
+            command_row("docker ps", Some("/tmp"), Some("docker"), vec![]),
+        ];
+
+        assert_eq!(filter_rows(&rows, "docker ps", None, true), vec![0, 1]);
+    }
+
+    #[test]
+    fn recent_mode_renders_only_command_column() {
+        let row = command_row("git status --short", Some("/srv/api"), Some("git"), vec![]);
+
+        assert_eq!(header_line(80, true), "Command");
+        assert_eq!(row_line(&row, 80, true), "git status --short");
+        assert!(header_line(80, false).contains("Time"));
+        assert!(row_line(&row, 80, false).contains("git status --short"));
     }
 
     #[test]

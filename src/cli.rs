@@ -467,6 +467,8 @@ pub struct PickArgs {
     pub pinned: bool,
     #[arg(long)]
     pub fuzzy: bool,
+    #[arg(long, hide = true)]
+    pub recent: bool,
 }
 
 #[derive(Debug, Args)]

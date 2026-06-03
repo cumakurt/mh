@@ -279,7 +279,7 @@ if [[ $- == *i* ]]; then
     trap - DEBUG
     __mh_history_reset
     local selected
-    selected="$(command mh pick --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
+    selected="$(command mh pick --recent --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
     if [[ -n "$selected" ]]; then
       READLINE_LINE="$selected"
       READLINE_POINT="${#READLINE_LINE}"
@@ -421,7 +421,7 @@ if [[ -o interactive ]]; then
   _mh_history_picker() {
     _mh_history_reset
     local selected
-    selected="$(command mh pick --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
+    selected="$(command mh pick --recent --limit "${MH_PICK_LIMIT:-100}" </dev/tty)"
     if [[ -n "$selected" ]]; then
       BUFFER="$selected"
       CURSOR=${#BUFFER}
@@ -512,7 +512,7 @@ function mh_history_picker
     set mh_pick_limit $MH_PICK_LIMIT
   end
 
-  set -l selected (command mh pick --limit $mh_pick_limit </dev/tty)
+  set -l selected (command mh pick --recent --limit $mh_pick_limit </dev/tty)
   if test -n "$selected"
     commandline --replace "$selected"
     commandline --cursor (string length -- "$selected")

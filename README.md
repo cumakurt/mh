@@ -275,7 +275,7 @@ mh pick --query docker --limit 100
 mh pick --fuzzy --query dps
 ```
 
-`mh pick` ranks results by current directory, successful exit codes, and recency when `display.context_ranking` is true (default). Up-arrow in integrated shells uses the same picker.
+`mh pick` ranks results by current directory, successful exit codes, and recency when `display.context_ranking` is true (default). Up-arrow in integrated shells opens the picker in recent-history mode: it lists only command text for the latest commands in entry order while still allowing in-picker filtering.
 
 #### `mh tui`
 
@@ -744,7 +744,7 @@ mh last --session
 
 ### Up Arrow Picker
 
-For Bash, Zsh, Fish, and Nushell, the integration binds the up arrow key to `mh pick`. Pressing up opens a selectable command list instead of only stepping through raw shell history.
+For Bash, Zsh, Fish, and Nushell, the integration binds the up arrow key to the `mh` picker. Pressing up opens a selectable command-only recent list in entry order instead of only stepping through raw shell history. You can type in the picker to filter that recent list.
 
 For Bash, Zsh, and Fish, you can optionally bind the left and right arrow keys to step through recent `mh` commands on the prompt (without opening the picker). Set `MH_HISTORY_ARROWS=1` before loading shell integration (or add it to your shell rc file). With it enabled, press right repeatedly to move to older commands and left to move back toward the original prompt line.
 
